@@ -1,6 +1,7 @@
 import argparse
 
 import gym
+import gym_ADI
 
 from stable_baselines3.sac import SAC
 from stable_baselines3.common.env_util import make_vec_env
