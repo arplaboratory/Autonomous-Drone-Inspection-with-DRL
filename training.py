@@ -33,7 +33,7 @@ def make_env(env_id, rank, seed=0):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     # data params
-    parser.add_argument('-env_id', type=str, default='ADI-v0', choice='ADI-v0')
+    parser.add_argument('-env_id', type=str, default='ADI-v0', choices='ADI-v0')
     parser.add_argument('-policy', type=str, default='cnn', choices='cnn')
     parser.add_argument('-max_envs_num', type=int, default=1)
 
@@ -46,5 +46,5 @@ if __name__ == '__main__':
     else:
         raise KeyError
 
-    model = SAC(policy_name, env, verbose=1)
+    model = SAC(policy_name, env, verbose=1, buffer_size=100000)
     model.learn(total_timesteps=25000)
