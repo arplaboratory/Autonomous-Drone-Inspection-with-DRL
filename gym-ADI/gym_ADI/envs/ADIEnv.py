@@ -35,9 +35,10 @@ class ADIEnv(Env):
 
     def render(self, mode='machine'):
         image = Image.open(self.filename)
+        image_np = np.array(image)
         if mode == 'human':
-            plt.imshow(np.asarray(image))
-        return image
+            plt.imshow(image_np)
+        return image_np
 
     def reset(self):
         obs = self.get_image_after_action()
@@ -72,4 +73,4 @@ class ADIEnv(Env):
 
         if image is None:
             raise KeyError('Error: Cannot get the image after 10 retries.')
-        return image
+        return np.array(image)
