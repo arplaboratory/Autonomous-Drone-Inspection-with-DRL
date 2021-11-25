@@ -8,7 +8,9 @@ __pycache__/
 
 # Distribution / packaging
 .Python
+.catkin_tools/
 build/
+devel/
 develop-eggs/
 dist/
 downloads/
