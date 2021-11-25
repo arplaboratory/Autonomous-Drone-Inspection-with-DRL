@@ -1,12 +1,9 @@
 import argparse
 
 import gym
-import gym_ADI
-
-from stable_baselines3.sac import SAC
-from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.utils import set_random_seed
 from stable_baselines3.common.vec_env import SubprocVecEnv
+from stable_baselines3.sac import SAC
 
 
 # Reference: https://stable-baselines3.readthedocs.io/en/master/guide/examples.html#multiprocessing-unleashing-the-power-of-vectorized-environments

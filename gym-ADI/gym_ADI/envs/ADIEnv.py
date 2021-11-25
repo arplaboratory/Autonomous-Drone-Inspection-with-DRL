@@ -1,10 +1,11 @@
 import subprocess
 
+import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
 from gym import Env
 from gym.spaces import Box
-import matplotlib.pyplot as plt
+
 
 class ADIEnv(Env):
     def __init__(self, rank=0, image_size=256, max_step=10):
@@ -59,8 +60,8 @@ class ADIEnv(Env):
         while current_retry < self.max_retry_time:
             try:
                 process = subprocess.run(
-                        self.ros_pattern.format(x=x, y=y, z=z, yaw=yaw, filename=self.filename), shell=True,
-                        capture_output=True)
+                    self.ros_pattern.format(x=x, y=y, z=z, yaw=yaw, filename=self.filename), shell=True,
+                    capture_output=True)
                 if process.stdout == b'success: True\n':
                     image = Image.open(self.filename)
                     print('success')
