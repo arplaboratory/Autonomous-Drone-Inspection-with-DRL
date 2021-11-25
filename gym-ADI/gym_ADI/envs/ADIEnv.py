@@ -64,7 +64,6 @@ class ADIEnv(Env):
                     capture_output=True)
                 if process.stdout == b'success: True\n':
                     image = Image.open(self.filename)
-                    print('success')
                     break
                 else:
                     raise KeyError(process.stdout)
