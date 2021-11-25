@@ -4,12 +4,13 @@ import numpy as np
 from PIL import Image
 from gym import Env
 from gym.spaces import Box
-import pdb
+import matplotlib.pyplot as plt
 
 class ADIEnv(Env):
     def __init__(self, rank=0, image_size=256, max_step=10):
         super().__init__()
         self.image_size = image_size
+        self.rank = rank
         self.action_space = Box(low=-1, high=1, shape=[4], dtype=np.float32)
         self.observation_space = Box(low=0, high=255,
                                      shape=[3, self.image_size, self.image_size],
@@ -22,6 +23,7 @@ class ADIEnv(Env):
 
     def step(self, action):
         obs = self.get_image_after_action(action)
+        reward = 0
         self.current_step += 1
         if self.current_step <= self.max_step:
             done = False
@@ -30,11 +32,21 @@ class ADIEnv(Env):
         info = None
         return obs, reward, done, info
 
-    def render(self, mode='human'):
-        raise NotImplementedError
+    def render(self, mode='machine'):
+        image = Image.open(self.filename)
+        if mode == 'human':
+            plt.imshow(np.asarray(image))
+        return image
 
     def reset(self):
         obs = self.get_image_after_action()
+        reward = 0
+        self.current_step = 1
+        if self.current_step <= self.max_step:
+            done = False
+        else:
+            done = True
+        info = None
         return obs, reward, done, info
 
     def get_image_after_action(self, action=None):
