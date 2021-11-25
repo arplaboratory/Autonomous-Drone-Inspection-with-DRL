@@ -1,7 +1,7 @@
 # use system python2
 # use the command line below before running this script
 # export ROS_MASTER_URI=http://128.238.39.130:11311
-# example: python test.py --command [x,y,z,yaw] --topic /hires/image_raw/compressed --filename image.png
+# example: python test.py --command x,y,z,yaw --topic /hires/image_raw/compressed --filename image.png
 # add --dummy to get black 256*256*3 image
 import rospy
 import argparse
