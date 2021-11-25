@@ -1,4 +1,6 @@
 #!/bin/bash
 
-./setup_ros.sh
+source /opt/ros/melodic/setup.bash
+source arpl_ws/devel/setup.bash    # Only work after catkin build
+
 roscore
