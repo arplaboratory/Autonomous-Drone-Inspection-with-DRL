@@ -8,7 +8,7 @@ from gym.spaces import Box
 import torch
 
 class ADIEnv(Env):
-    def __init__(self, rank=0, radius=0.7, image_size=256, max_step=10):
+    def __init__(self, rank=0, radius=0.7, z_0=0.33, image_size=256, max_step=10):
         super().__init__()
         self.image_size = image_size
         self.rank = rank
@@ -21,6 +21,7 @@ class ADIEnv(Env):
         self.max_retry_time = 10
         self.max_step = max_step
         self.radius = radius
+        self.z_0 = z_0
         self.current_step = 0
         self.current_polar_position = 0, 0  # phi, theta
         self.last_score = 0
@@ -93,7 +94,7 @@ class ADIEnv(Env):
         phi, theta = polar_position
         x = self.radius * np.sin(theta) * np.cos(phi)
         y = self.radius * np.sin(theta) * np.sin(phi)
-        z = self.radius * np.cos(theta)
+        z = self.radius * np.cos(theta) + self.z_0
         yaw = phi - np.pi
         if yaw < 0:
             yaw += 2 * np.pi

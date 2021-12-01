@@ -8,7 +8,7 @@ from stable_baselines3.sac import SAC
 
 # Reference: https://stable-baselines3.readthedocs.io/en/master/guide/examples.html#multiprocessing-unleashing-the-power-of-vectorized-environments
 
-def make_env(env_id, rank, seed, radius):
+def make_env(env_id, rank, seed, radius, z_0):
     """
     Utility function for multiprocessed env.
 
@@ -19,7 +19,7 @@ def make_env(env_id, rank, seed, radius):
     """
 
     def _init():
-        env = gym.make(env_id, rank=rank, radius=radius)
+        env = gym.make(env_id, rank=rank, radius=radius, z_0=z_0)
         env.seed(seed + rank)
         return env
 
@@ -36,12 +36,13 @@ if __name__ == '__main__':
     parser.add_argument('-max_envs_num', type=int, default=1)
     parser.add_argument('-batch_size', type=int, default=64)
     parser.add_argument('-radius', type=float, default=0.7)
+    parser.add_argument('-z_0', type=float, default=0.33)
     parser.add_argument('-buffer_size', type=int, default=100000)
     parser.add_argument('-total_timesteps', type=int, default=25000)
 
     opt = parser.parse_args()
 
-    env = SubprocVecEnv([make_env(opt.env_id, i, opt.global_seed, opt.radius) for i in range(opt.max_envs_num)])
+    env = SubprocVecEnv([make_env(opt.env_id, i, opt.global_seed, opt.radius, opt.z_0) for i in range(opt.max_envs_num)])
 
     if opt.policy == 'cnn':
         policy_name = 'CnnPolicy'
