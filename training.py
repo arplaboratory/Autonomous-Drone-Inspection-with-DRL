@@ -35,12 +35,14 @@ if __name__ == '__main__':
     parser.add_argument('-global_seed', type=int, default=1)
     parser.add_argument('-max_envs_num', type=int, default=1)
     parser.add_argument('-batch_size', type=int, default=64)
-    parser.add_argument('-radius', type=float, default=0.7)
+    parser.add_argument('-r_max', type=float, default=-1.0)  # -1.0 means we only allow run on a sphere
+    parser.add_argument('-r_min', type=float, default=0.7)
     parser.add_argument('-z_0', type=float, default=0.33)
     parser.add_argument('-buffer_size', type=int, default=100000)
     parser.add_argument('-total_timesteps', type=int, default=25000)
 
     opt = parser.parse_args()
+    opt.radius = [opt.r_min, opt.r_max]
 
     env = SubprocVecEnv([make_env(opt.env_id, i, opt.global_seed, opt.radius, opt.z_0) for i in range(opt.max_envs_num)])
 
