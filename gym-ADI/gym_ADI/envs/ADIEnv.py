@@ -120,6 +120,8 @@ class ADIEnv(Env):
         else:
             r_0, phi_0, theta_0 = self.current_polar_position
             d_r, d_phi, d_theta = action
+            # normalize d_r from [0, pi/2] to radius
+            d_r = (d_r / (np.pi / 2)) * (self.radius[1] - self.radius[0]) + self.radius[0]
             r_t = r_0 + d_r
 
         phi_t = phi_0 + d_phi
