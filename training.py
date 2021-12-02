@@ -1,10 +1,10 @@
 import argparse
-
+import os
 import gym
 from stable_baselines3.common.utils import set_random_seed
 from stable_baselines3.common.vec_env import SubprocVecEnv
 from stable_baselines3.sac import SAC
-
+from stable_baselines3.common.callbacks import EvalCallback
 
 # Reference: https://stable-baselines3.readthedocs.io/en/master/guide/examples.html#multiprocessing-unleashing-the-power-of-vectorized-environments
 
@@ -34,7 +34,9 @@ if __name__ == '__main__':
     parser.add_argument('-env_id', type=str, default='ADI-v0', choices='ADI-v0')
     parser.add_argument('-policy', type=str, default='cnn', choices='cnn')
     parser.add_argument('-global_seed', type=int, default=1)
-    parser.add_argument('-max_envs_num', type=int, default=1)
+    parser.add_argument('-max_envs_nu'
+                        ''
+                        'del model  # delete trained model to demonstrate loadingm', type=int, default=1)
     parser.add_argument('-batch_size', type=int, default=64)
     parser.add_argument('-r_max', type=float, default=1.0)  # -1.0 means we only allow run on a sphere
     parser.add_argument('-r_min', type=float, default=0.7)
@@ -53,5 +55,17 @@ if __name__ == '__main__':
     else:
         raise KeyError
 
-    model = SAC(policy_name, env, verbose=1, buffer_size=opt.buffer_size, batch_size=opt.batch_size)
-    model.learn(total_timesteps=opt.total_timesteps)
+    eval_callback = EvalCallback(env, best_model_save_path='./logs/',
+                                 log_path='./logs/', eval_freq=1000,
+                                 deterministic=True, render=False)
+
+    model = SAC(policy_name, env, verbose=1, buffer_size=opt.buffer_size, batch_size=opt.batch_size, tensorboard_log="./tb/")
+
+    if os.path.isfile('./buffer.pth'):
+        model.load_replay_buffer('./buffer.pth')
+
+    model.learn(total_timesteps=opt.total_timesteps, callback=eval_callback)
+
+    # Save Replay Buffer
+    model.save('./logs/final_model.pth')
+    model.save_replay_buffer('./buffer.pth')
