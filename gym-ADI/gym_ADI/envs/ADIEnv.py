@@ -18,9 +18,9 @@ class ADIEnv(Env):
         self.enable_radius_change = True if self.radius[1] != -1.0 else False  # Sphere
 
         if not self.enable_radius_change:
-            self.action_space = Box(low=0, high=np.pi / 2, shape=[2], dtype=np.float32)
+            self.action_space = Box(low=-np.pi / 2, high=np.pi / 2, shape=[2], dtype=np.float32)
         else:
-            self.action_space = Box(low=0, high=np.pi / 2, shape=[3], dtype=np.float32)
+            self.action_space = Box(low=-np.pi / 2, high=np.pi / 2, shape=[3], dtype=np.float32)
 
         self.observation_space = Box(low=0, high=255,
                                      shape=[3, self.image_size, self.image_size],
@@ -120,8 +120,8 @@ class ADIEnv(Env):
         else:
             r_0, phi_0, theta_0 = self.current_polar_position
             d_r, d_phi, d_theta = action
-            # normalize d_r from [0, pi/2] to radius
-            d_r = (d_r / (np.pi / 2)) * (self.radius[1] - self.radius[0]) + self.radius[0]
+            # normalize d_r from [-pi/2, pi/2] to range
+            d_r = (d_r / (np.pi / 2)) * (self.radius[1] - self.radius[0])
             r_t = r_0 + d_r
 
         phi_t = phi_0 + d_phi
