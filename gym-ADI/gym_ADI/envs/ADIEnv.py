@@ -9,7 +9,7 @@ from gym.spaces import Box
 
 
 class ADIEnv(Env):
-    def __init__(self, rank=0, radius=None, z_0=0.33, obs_size=None, max_step=5):
+    def __init__(self, rank=0, radius=None, z_0=0.35, obs_size=None, max_step=5):
         super().__init__()
         if radius is None:
             radius = [0.7, -1.0]  # r_min, r_max
@@ -95,9 +95,10 @@ class ADIEnv(Env):
                         self.ros_pattern.format(x=x, y=y, z=z, yaw=yaw, filename=self.filename), shell=True,
                         capture_output=True)
                     output = process.stdout.decode("utf-8").split()
-                    if len(output) == 9:
+                    success = output[1][1:]   # raw string is "True
+                    if success == "True":
                         image = Image.open(self.filename)
-                        detect = output
+                        detect = output[2:-1]
                         break
                     else:
                         raise KeyError(process.stdout)
