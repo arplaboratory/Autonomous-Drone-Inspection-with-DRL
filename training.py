@@ -51,7 +51,7 @@ if __name__ == '__main__':
     # env = SubprocVecEnv(
     #     [make_env(opt.env_id, i, opt.global_seed, opt.radius, opt.z_0, opt.max_step, opt.obs_size) for i in range(opt.max_envs_num)])
     # Single env
-    env = make_env(opt.env_id, 0, opt.global_seed, opt.radius, opt.z_0, opt.max_step, opt.obs_size)
+    env = make_env(opt.env_id, 0, opt.global_seed, opt.radius, opt.z_0, opt.max_step, opt.obs_size)()
 
     if opt.policy == 'cnn':
         policy_name = 'CnnPolicy'
