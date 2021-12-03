@@ -31,12 +31,12 @@ class ADIEnv(Env):
             self.action_space = Box(low=-np.pi / 2, high=np.pi / 2, shape=[3], dtype=np.float32)
 
         self.observation_space = Box(low=0, high=255,
-                                     shape=[3, self.obs_size[0], self.obs_size[1]],
+                                     shape=[self.obs_size[0], self.obs_size[1], 3],
                                      dtype=np.uint8)
 
         self.filename = '/home/jiuhong/image.png'
         self.ros_pattern = "rosservice call /call_robot \"{{x: {x:.1f}, y: {y:.1f}, z: {z:.1f}, yaw: {yaw:.1f},filename: {filename:s}, topic: '/hires/image_raw/compressed', robot: 'dragonfly12'}}\""
-        self.max_retry_time = 10
+        self.max_retry_time = 100
         self.max_step = max_step
         self.z_0 = z_0
         self.center_image = self.image_size[0] // 2, self.image_size[1] // 2  # Y, X
@@ -56,7 +56,7 @@ class ADIEnv(Env):
             done = False
         else:
             done = True
-        info = None
+        info = {}
         return obs, reward, done, info
 
     def render(self, mode='machine'):
@@ -97,17 +97,19 @@ class ADIEnv(Env):
                     output_raw = process.stdout.decode("utf-8")
                     output = output_raw.split()
                     success = output[1][1:]   # raw string is "True
-                    if success == "True":
+                    if success == "True" and int(output[7])!=-1:
                         image = Image.open(self.filename)
                         detect = output[2:-1]
                         break
                     else:
                         raise KeyError(process.stdout)
-                except KeyError:
+                except Exception:
                     print(f'Error: {output_raw}')
                     current_retry += 1
-            print(f'Sleep 10s: Cannot get the image after {self.max_retry_time} retries.')
-            time.sleep(10.0)
+            if image is None:
+                current_retry = 0
+                print(f'Sleep 10s: Cannot get the image after {self.max_retry_time} retries.')
+                time.sleep(10.0)
 
         # resize image
         image = image.resize(tuple(self.obs_size))
