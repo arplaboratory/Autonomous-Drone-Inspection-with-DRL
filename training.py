@@ -76,5 +76,6 @@ if __name__ == '__main__':
         model.learn(total_timesteps=opt.total_timesteps, callback=eval_callback)
     finally:
         # Save Replay Buffer
-        model.save('./logs/final_model.pth')
-        model.save_replay_buffer('./buffer.pth')
+        if model.num_timesteps > 1000:
+            model.save('./logs/final_model.pth')
+            model.save_replay_buffer('./buffer.pth')
