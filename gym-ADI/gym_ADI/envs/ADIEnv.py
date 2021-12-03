@@ -6,7 +6,7 @@ import numpy as np
 from PIL import Image
 from gym import Env
 from gym.spaces import Box
-
+import random
 
 class ADIEnv(Env):
     def __init__(self, rank=0, radius=None, z_0=0.35, obs_size=None, max_step=5):
@@ -21,9 +21,14 @@ class ADIEnv(Env):
         else:
             self.obs_size = obs_size
 
+        random.seed(0)
         self.radius = radius
         self.rank = rank
-        self.enable_radius_change = True if self.radius[1] != -1.0 else False  # Sphere
+        if self.radius[1] == -1.0:
+            self.enable_radius_change = False  # Sphere
+            self.radius[1] = self.radius[0]
+        else:
+            self.enable_radius_change = True
 
         if not self.enable_radius_change:
             self.action_space = Box(low=-np.pi / 2, high=np.pi / 2, shape=[2], dtype=np.float32)
@@ -41,14 +46,16 @@ class ADIEnv(Env):
         self.z_0 = z_0
         self.center_image = self.image_size[0] // 2, self.image_size[1] // 2  # Y, X
         self.current_step = 0
-        self.current_polar_position = self.radius[0], 0, np.pi/4  # r, phi, theta
+        self.current_polar_position = self.radius[1], 0, 0  # r, phi, theta
         self.current_score = 0
+        self.action_safe = True
+        self.real_action = None
 
     def step(self, action):
         obs, detect = self.get_image_detect_after_action(action)
 
         score = self.get_score(detect)
-        reward = score - self.current_score
+        reward = score  # reward = diff or score
         self.current_score = score
 
         self.current_step += 1
@@ -56,7 +63,7 @@ class ADIEnv(Env):
             done = False
         else:
             done = True
-        info = {'reward': reward, 'score': self.current_score}
+        info = {'reward': reward, 'score': self.current_score, 'polar': self.current_polar_position}
         print(info)
         return obs, reward, done, info
 
@@ -70,7 +77,7 @@ class ADIEnv(Env):
     def reset(self):
 
         # init
-        self.current_polar_position = self.radius[0], 0, np.pi/4  # r, phi, theta
+        self.current_polar_position = self.radius[1], random.random()*np.pi*2, random.random()*np.pi/2  # r, phi, theta
         self.current_score = 0
 
         obs, detect = self.get_image_detect_after_action()
@@ -89,6 +96,8 @@ class ADIEnv(Env):
         current_retry = 0
         image = None
         detect = None  # xmin ymin xmax ymax probability(detector) xmin ymin xmax ymax(vicon)
+        self.action_safe = True
+        self.real_action = None
         while image is None:
             while current_retry < self.max_retry_time:
                 try:
@@ -102,6 +111,10 @@ class ADIEnv(Env):
                         image = Image.open(self.filename)
                         detect = output[2:-1]
                         break
+                    elif success == 'Bump':
+                        self.action_safe = False
+                        self.real_action = self.action_space.sample()
+                        raise KeyError(process.stdout)
                     else:
                         raise KeyError(process.stdout)
                 except Exception:
@@ -138,6 +151,7 @@ class ADIEnv(Env):
         else:
             r_0, phi_0, theta_0 = self.current_polar_position
             d_r, d_phi, d_theta = action
+            print(action)
             # normalize d_theta from [-pi/2, pi/2] to [-pi/4, pi/4]
             d_theta = (d_theta + np.pi/2)/2 - np.pi/4
             # normalize d_r from [-pi/2, pi/2] to range
@@ -154,7 +168,7 @@ class ADIEnv(Env):
             phi_t += 2 * np.pi
         elif phi_t > 2 * np.pi:
             phi_t -= 2 * np.pi
-        theta_t = np.clip(theta_t, np.pi/6 , np.pi/2) # 60 degrees
+        theta_t = np.clip(theta_t, np.pi/4 , np.pi/2) # 45 degrees
 
         return r_t, phi_t, theta_t
 
@@ -164,11 +178,19 @@ class ADIEnv(Env):
         xmin, ymin, xmax, ymax, xmin_gt, ymin_gt, xmax_gt, ymax_gt = int(xmin), int(ymin), int(xmax), int(ymax), int(
             xmin_gt), int(ymin_gt), int(xmax_gt), int(ymax_gt)
         prob = float(prob)
-        score = 0
 
-        # If we get a bbox, score + 1
+        # Safe action
+
+        if self.action_safe is False:
+            score = 0
+            return score
+        else:
+            score = 1
+
+        # If we get a bbox, score + prob
+
         if prob >= 0.4:
-            score += 1
+            score += prob
 
             # The second part is iou of pred and gt if we get a bbox
             pred_area = (xmax - xmin) * (ymax - ymin)
@@ -183,7 +205,7 @@ class ADIEnv(Env):
                 intersection = (right - left) * (bottom - top)
             else:
                 intersection = 0
-            iou = intersection / (pred_area + gt_area - intersection) * 1.0
+            iou = intersection / (pred_area + gt_area - intersection + 1e-8)
             score += iou
 
             if iou > 0.6:
