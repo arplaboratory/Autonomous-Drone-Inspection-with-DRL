@@ -31,7 +31,7 @@ class ADIEnv(Env):
             self.action_space = Box(low=-np.pi / 2, high=np.pi / 2, shape=[3], dtype=np.float32)
 
         self.observation_space = Box(low=0, high=255,
-                                     shape=[3, self.image_size[0], self.image_size[1]],
+                                     shape=[3, self.obs_size[0], self.obs_size[1]],
                                      dtype=np.uint8)
 
         self.filename = '/home/jiuhong/image.png'
