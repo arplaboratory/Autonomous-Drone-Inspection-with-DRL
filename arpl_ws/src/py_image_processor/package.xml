@@ -1,0 +1,19 @@
+<package>
+  <name>py_image_processor</name>
+  <version>0.1.0</version>
+  <description>py_image_processor</description>
+  <maintainer email="rundong.get@nyu.edu">Yang Zhou</maintainer>
+  <license>BSD</license>
+  <author>Rundong Ge</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <run_depend>rospy</run_depend>
+  <run_depend>rospy</run_depend>
+  <run_depend>std_msgs</run_depend>
+  <run_depend>geometry_msgs</run_depend>
+  <run_depend>sensor_msgs</run_depend>
+  <run_depend>cv_bridge</run_depend>
+  <run_depend>tf</run_depend>
+  <run_depend>opencv2</run_depend>
+</package>

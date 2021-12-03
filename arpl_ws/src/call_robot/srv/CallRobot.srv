@@ -6,4 +6,6 @@ string filename
 string topic
 string robot
 ---
-bool success
+string success 
+
+

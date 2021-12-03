@@ -1,0 +1,12 @@
+yolo_model:
+
+  config_file:
+    name: drone.cfg
+  weight_file:
+    name: drone_final.weights
+  threshold:
+    value: 0.4
+  detection_classes:
+    names:
+      - drone
+

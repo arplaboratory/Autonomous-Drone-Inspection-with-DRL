@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>darknet_ros</name>
+  <version>1.1.4</version>
+  <description>Darknet is an open source neural network framework that runs on CPU and GPU. You only look once (YOLO) is a state-of-the-art, real-time object detection system. This Ros package is based on darknet_ros package by ETH Zurich Legged Robotics and updated darknet framework by AlexeyAB.  https://github.com/leggedrobotics/darknet_ros https://github.com/AlexeyAB/darknet</description>
+  <maintainer email="yichen.hu@nyu.edu">Yichen Hu</maintainer>
+  <license>BSD</license>
+  <url type="website">https://github.com/dustism/darknet_ros</url>
+  <author email="yichen.hu@nyu.edu">Yichen Hu</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <depend>boost</depend>
+
+  <depend>roscpp</depend>
+  <depend>rospy</depend>
+  <depend>std_msgs</depend>
+  <depend>image_transport</depend>
+  <depend>cv_bridge</depend>
+  <depend>sensor_msgs</depend>
+  <depend>message_generation</depend>
+  <depend>actionlib</depend>
+  <depend>darknet_ros_msgs</depend>
+
+  <!-- Test dependencies -->
+  <test_depend>rostest</test_depend>
+  <test_depend>wget</test_depend>
+</package>
