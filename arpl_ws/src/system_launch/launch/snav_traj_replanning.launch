@@ -1,0 +1,35 @@
+<launch>
+  <arg name="mav_name" default="$(env MAV_NAME)"/>
+
+  <arg name="disable_obstacle_avoid" default="false" />
+
+  <arg name="yaml_file" default="obstacle_demo" unless="$(arg disable_obstacle_avoid)" />
+  <arg name="yaml_file" default="pcv_demo" if="$(arg disable_obstacle_avoid)" />
+
+  <arg name="vins" default="true" />
+
+  <arg name="points_topic" default="stereo/dfs/point_cloud" if="$(arg disable_obstacle_avoid)"/>
+  <arg name="points_topic" default="stereo/points" unless="$(arg disable_obstacle_avoid)" />
+
+  <group ns="$(arg mav_name)">
+
+  <include file="$(find traj_replanning)/launch/pcl_radius_outlier.launch">
+    <arg name="radius_search" value="0.1" />
+    <arg name="min_neighbors" value="38"/>
+    <arg name="points_topic" default="$(arg points_topic)" />
+  </include>
+
+    <node name="trajectory_replanning" pkg="traj_replanning" type="trajectory_replanning" output="screen">
+      <rosparam command="load" file="$(find traj_replanning)/config/$(arg yaml_file).yaml" />
+      <param name="map_frame" value="/world"/>
+      <param name="odom_frame" value="/base_link"/>
+      <param name="use_points" value="true"/>
+      <param name="use_current_start" value="false"/>
+      <param name="use_goto" value="true"/>
+      <remap from="camera/depth/image_raw" to="stereo/dfs/depth/image_raw"/>
+      <remap from="radius_outlier_removal/output" to="stereo/dfs/point_cloud" unless="$(arg vins)"/>
+      <remap from="waypoints" to="/waypoints"/>
+      <remap from="mav_manager_node/goTo" to="mav_services/goTo"/>
+    </node>
+  </group>
+</launch>

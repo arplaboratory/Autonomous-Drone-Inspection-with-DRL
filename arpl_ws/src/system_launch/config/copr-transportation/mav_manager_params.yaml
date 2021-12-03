@@ -1,0 +1,9 @@
+need_imu: false
+need_output_data: true
+use_attitude_safety_catch: false
+max_attitude_angle: 0.43
+takeoff_height: 1.15
+robots:
+  robot1: "dragonfly6" 
+  robot2: "dragonfly2" 
+  robot3: "dragonfly3" 

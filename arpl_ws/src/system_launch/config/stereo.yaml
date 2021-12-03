@@ -1,0 +1,22 @@
+calib_file_type: "ros"
+
+input_is_rectified: false
+if_blur: false
+if_use_high_gradient_only: true
+half_size: true
+
+matcher_type: "BM"
+numDisparities: 32
+blockSize: 7 #15
+preFilterType: 1
+preFilterSize: 9
+preFilterCap: 31
+minDisparity: 0
+speckleRange: 0
+speckleWindowSize: 0
+textureThreshold: 10
+uniquenessRatio: 15
+
+adapt_size: 7
+adapt_thresh: -5
+disp_range: 6 #6

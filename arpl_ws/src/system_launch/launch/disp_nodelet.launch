@@ -1,0 +1,100 @@
+<launch>
+
+  <arg name="mav_name" default="$(env MAV_NAME)"/>
+
+  <arg name="use_gpu" default="false"/>
+
+  <arg name="namespace_name" default="stereo"/>
+  <arg name="nodelet_manager_name" default="stereo_nodelet_manager"/>
+  <arg name="camera_number" default="3"/> <!-- use 3 for 8x74, 2 for 8x96 -->
+  <arg name="skip_n_frames" default="0"/>
+
+  <arg name="width" default="640"/>
+  <arg name="height" default="480"/>
+
+  <arg name="frame_rate" default="15"/>
+  <arg name="exposure" default="1"/>
+  <arg name="gain" default="0.3"/>
+
+  <group ns="$(arg mav_name)/$(arg namespace_name)">
+
+    <node pkg="nodelet" type="nodelet" name="$(arg nodelet_manager_name)" args="manager" output="screen">
+      <param name="num_worker_threads" value="1"/>
+    </node>
+
+    <!-- camera driver nodelet -->
+    <node pkg="nodelet" type="nodelet" name="snap_cam_nodelet"
+    args="load snap_cam_ros/stereo_driver $(arg nodelet_manager_name)">
+      <param name="format" value="1"/>
+      <param name="camera_number" value="$(arg camera_number)"/>
+      <param name="width" value="$(arg width)"/>
+      <param name="height" value="$(arg height)"/>
+      <param name="skip_n_frames" value="$(arg skip_n_frames)"/>
+      <param name="frame_id" value="left_stereo"/>
+      <param name="frame_id_right" value="right_stereo"/>
+      <param name="frame_rate" value="$(arg frame_rate)"/>
+      <param name="exposure" value="$(arg exposure)" />
+      <param name="gain" value="$(arg gain)" />
+      <param name="left/camera_info_url" value="$(find disparity)/config/$(arg mav_name)/left.yaml"/>
+      <param name="right/camera_info_url" value="$(find disparity)/config/$(arg mav_name)/right.yaml"/>
+    </node>
+
+    <group unless="$(arg use_gpu)">
+
+      <!-- Stereo rectify
+      <node pkg="nodelet" type="nodelet" name="rect_nodelet" args="standalone disparity/RectNodelet" output="screen">
+        <remap from="~cam_left" to="left/image_raw"/>
+        <remap from="~cam_right" to="right/image_raw"/>
+        <remap from="~image_left_rect" to="left/image_rect"/>
+        <remap from="~image_right_rect" to="right/image_rect"/>
+        <remap from="~imagestereo_rect_info" to="imagestereo_rect_info"/>
+        <rosparam command="load" file="$(find system_launch)/config/stereo.yaml"/>
+        <rosparam command="load" file="$(find disparity)/config/$(arg mav_name)/left.yaml" ns="left"/>
+        <rosparam command="load" file="$(find disparity)/config/$(arg mav_name)/right.yaml" ns="right"/>
+      </node> -->
+
+      <node pkg="nodelet" type="nodelet" name="disp_nodelet" args="load disparity/DispNodelet $(arg nodelet_manager_name)" output="screen">
+        <remap from="~disp_input_left" to="left/image_raw"/>
+        <remap from="~disp_input_right" to="right/image_raw"/>
+
+        <!--<remap from="~disp_input_left" to="left/image_rect"/>
+        <remap from="~disp_input_right" to="right/image_rect"/> 
+        <param name="input_is_rectified" type="bool" value="true"/>-->
+
+        <remap from="~points" to="points"/>
+        <remap from="~img_disp" to="img_disp"/>
+        <remap from="~img_disp_grad" to="img_disp_grad"/>
+        <rosparam command="load" file="$(find system_launch)/config/stereo.yaml"/>
+        <rosparam command="load" file="$(find disparity)/config/$(arg mav_name)/left.yaml" ns="left"/>
+        <rosparam command="load" file="$(find disparity)/config/$(arg mav_name)/right.yaml" ns="right"/>
+       </node>
+    </group>
+
+    <group if="$(arg use_gpu)">
+
+      <!-- Stereo rectify -->
+      <node pkg="nodelet" type="nodelet" name="rect_nodelet" args="standalone disparity/RectNodelet" output="screen">
+        <remap from="~cam_left" to="left/image_raw"/>
+        <remap from="~cam_right" to="right/image_raw"/>
+        <remap from="~image_left_rect" to="left/image_rect"/>
+        <remap from="~image_right_rect" to="right/image_rect"/>
+        <remap from="~imagestereo_rect_info" to="imagestereo_rect_info"/>
+        <rosparam command="load" file="$(find system_launch)/config/stereo.yaml"/>
+        <rosparam command="load" file="$(find disparity)/config/$(arg mav_name)/left.yaml" ns="left"/>
+        <rosparam command="load" file="$(find disparity)/config/$(arg mav_name)/right.yaml" ns="right"/>
+      </node>
+
+      <node pkg="nodelet" type="nodelet" name="disp_nodelet_gpu" args="load stereo_opencl/DispNodeletOpenCL $(arg nodelet_manager_name)" output="screen">
+        <remap from="~cam_left" to="left/image_rect"/>
+        <remap from="~cam_right" to="right/image_rect"/>
+        <remap from="~points" to="points"/>
+        <remap from="~img_disp_opencl" to="img_disp"/>
+        <rosparam command="load" file="$(find stereo_opencl)/config/stereo.yaml"/>
+        <rosparam command="load" file="$(find disparity)/config/$(arg mav_name)/left.yaml" ns="left"/>
+        <rosparam command="load" file="$(find disparity)/config/$(arg mav_name)/right.yaml" ns="right"/>
+      </node>
+
+    </group>
+
+  </group>
+</launch>

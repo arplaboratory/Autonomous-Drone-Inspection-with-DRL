@@ -1,0 +1,26 @@
+# Reducing angular derivative
+plgains:
+ #pos: {x: 2.95, y: 2.95, z: 0.25}
+ #vel: {x: 0.18, y: 0.18, z: 0.01}
+  pos: {x: 4.18, y: 4.18, z: 6.25}
+  vel: {x: 2.15, y: 2.15, z: 3.42}
+  rot: {x: 1.5, y: 1.5, z: 1.0}
+  ang: {x: 0.13, y: 0.13, z: 0.1}
+  rotp: {x: 0.50, y: 0.50, z: 0.120}
+  angp: {x: 0.162, y: 0.162, z: 0.083}
+  #angp: {x: 0.08, y: 0.08, z: 0.0430}
+  #ki:  {x: 0.00, y: 0.001, z: 0.008}
+  #ki:  {x: 0.00, y: 0.004, z: 0.03}
+  #kib:  {x: 0.00, y: 0.004, z: 0.03}
+rhos:
+  rho1: {x: -0.1450, y: 0.255,  z: 0.0320}
+  rho2: {x: 0.2951,  y: 0.0000, z: 0.0320}
+  rho3: {x: -0.1450, y: -0.255, z: 0.0320}
+corrections:
+  kf: 0.0
+  r: 0.0
+  p: 0.0
+ 
+# dragonfly6 cable length : 72 cm
+# dragonfly3 cable length : 73.5 cm
+# dragonfly2 cable length : 76 cm

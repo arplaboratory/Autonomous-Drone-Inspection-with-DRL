@@ -1,0 +1,158 @@
+<launch>
+  <!--fkie_master_discovery start-->
+  <node name="master_discovery" pkg="fkie_master_discovery" type="master_discovery">
+    <param name="log_level" value="INFO" />
+    <!-- Specifies the multicast group. You can bind the to defined interface by adding @address to the group -->
+    <param name="mcast_group" value="226.0.0.0" />
+    <param name="mcast_port" value="11511" />
+    <!-- Bind the master_discovery to an interface address. If this is not specified the ROS_IP or default interface will be used. -->
+    <param name="interface" value="" />
+    <!-- The port number for XML-RPC server created by the node. (Default: ROS_MASTER_URI.port+300). -->
+    <param name="rpc_port" value="11611" />
+    <!-- the test rate of ROS master state in Hz (Default: 1 Hz). -->
+    <param name="rosmaster_hz" value="1" />
+    <!-- the send rate of the heartbeat packets in hz. Zero disables the heartbeats. (Default: 0.02 Hz)
+      Only values between 0.1 and 25.5 are used to detemine the link quality. -->
+    <param name="heartbeat_hz" value="0.02" />
+    <!-- the count of intervals (1 sec) used for a quality calculation. If
+      `HEARTBEAT_HZ` is smaller then 1, `MEASUREMENT_INTERVALS` will be divided
+      by `HEARTBEAT_HZ` value.
+      (Default: 5 sec are used to determine the link qaulity) -->
+    <param name="measurement_intervals" value="5" />
+    <!-- the timeout is defined by calculated measurement duration multiplied by `TIMEOUT_FAKTOR`. -->
+    <param name="timeout_factor" value="10" />
+    <!-- remove an offline host after this time in [sec] (Default: 300 sec). -->
+    <param name="remove_after" value="300" />
+    <!-- send an update request, if after this time no heartbeats are received [sec] (Default: 60 sec). -->
+    <param name="active_request_after" value="60" />
+    <!-- in some network environments does multicast not work properly. In this
+      case you can specify robots where a master discovery is running. These
+      robots are pinged using unicast communication. -->
+    <rosparam param="robot_hosts">[]</rosparam>
+    <!-- After the ROS master was changed the new state will be sent for
+      `CHANGE_NOTIFICATION_COUNT` times (Default: 3 sec). The new state will be
+      sent with `ROSMASTER_HZ` and only if `HEARTBEAT_HZ` is zero. -->
+    <param name="change_notification_count" value="3" />
+    <!-- disables the send of multicast messages.  -->
+    <param name="send_mcast" value="True" />
+    <!-- disables the listening to multicast messages. If listen_mcast and send_mcast are False, only unicast socket will be created.  -->
+    <param name="listen_mcast" value="True" />
+  </node>
+  <!--fkie_master_discovery end-->
+
+  <!--fkie_master_sync start-->
+  <node name="master_sync" pkg="fkie_master_sync" type="master_sync">
+    <!-- Performs resync after the host was offline: unregister and register again to avoid connection losses to python topic. These does not suppot reconnection! -->
+    <param name="resync_on_reconnect" value="True" />
+    <!-- A configurable period that controls how long the offline-online period [sec] is before the resync kicks in.
+     (Since version 0.5.9)-->
+    <param name="resync_on_reconnect_timeout" value="0" />
+    <!-- Since version 0.7.4:
+      For all sync_* and ignore_* parameter you can use follow structure to define filter for specific hosts:
+      <rosparam param="sync_topics">
+          - hostname:
+            - filter
+      </rosparam>
+    -->
+    <!-- A filter list with patterns. If this pattern merges to a node, topic or service it will not be synchronized.
+     (Since version 0.5.4)-->
+    <rosparam param="do_not_sync">[]</rosparam>
+
+    <!-- This list with names of ROS master to ignore -->
+    <rosparam param="ignore_hosts">[]</rosparam>
+
+    <!-- This list with names of ROS master to synchronize. Only this ROS master in this list will be synchronized. The ~ignore_hosts list is processed first. -->
+    <rosparam param="sync_hosts">[]</rosparam>
+
+    <!-- The list of nodes, which are to be ignored while a synchroniation. All their topics and services are ignored!
+    These are defaults and cannot be removed: [/rosout, "/*master_sync* node", "remote /*master_discovery* node", "/*node_manager", /*zeroconf] -->
+    <rosparam param="ignore_nodes">[]</rosparam>
+
+    <!-- The list of nodes to synchronize. Only topics of this nodes are synchronized. The ~ignore_nodes, ~ignore_topics and ~ignore_services lists are processed first. -->
+    <rosparam param="sync_nodes">[]</rosparam>
+
+    <!-- The list of topics, which are to be ignored while a synchroniation. The ~ignore_nodes list is processed first.
+    These are defaults and cannot be removed: ['/rosout', '/rosout_agg'] -->
+    <rosparam param="ignore_topics">['/hires/image_raw', '/hires/image_raw/compressedDepth*','/hires/image_raw/theora*']</rosparam>
+    <rosparam param="ignore_publishers">[]</rosparam>
+    <rosparam param="ignore_subscribers">[]</rosparam>
+
+    <!-- The list of topics to synchronize. The ~ignore_nodes and ~ignore_topics lists are processed first. -->
+    <rosparam param="sync_topics">[]</rosparam>
+
+    <!-- The list of services, which are to be ignored while a synchroniation. The ~ignore_nodes list is processed first.
+    These are defaults and cannot be removed: ['/*get_loggers', '/*set_logger_level'] -->
+    <rosparam param="ignore_services">[]</rosparam>
+
+    <!-- The list of services to synchronize. The ~ignore_nodes and ~ignore_services lists are processed first. -->
+    <rosparam param="sync_services">[]</rosparam>
+
+    <!-- This parameter is only regarded, if sync_nodes or sync_topics are set. In this case the subscribed and published topics are synchronized even if they are not in the sync_* list -->
+    <param name="sync_topics_on_demand" value="False" />
+
+    <!-- The list of types to ignore.
+    These are defaults and cannot be removed: ['bond/Status'] -->
+    <rosparam param="ignore_type">[]</rosparam>
+
+    <!-- The nodes which are running not at the same host as the ROS master are not synchronized by default. Use sync_remote_nodes to sync these nodes also. -->
+    <param name="sync_remote_nodes" value="False" />
+
+    <!-- checks for eqaul hostname of topic provider and master uri. Usefull on warning "Wait for topic with type..." still if master_discovery is running. -->
+    <param name="check_host" value="True" />
+  </node>
+  <!--fkie_master_sync end-->
+
+  <!--mocap_vicon start-->
+  <node pkg="mocap_vicon"
+    type="mocap_vicon_node"
+    name="vicon"
+    output="screen">
+    <param name="server_address" value="128.238.39.148"/>
+    <param name="frame_rate" value="100"/>
+    <param name="max_accel" value="10.0"/>
+    <param name="publish_tf" value="false"/>
+    <param name="fixed_frame_id" value="mocap"/>
+    <rosparam param="model_list">[]</rosparam>
+    <remap from="/vicon/DragonFly12/odom" to="/dragonfly12/odom"/>
+    <remap from="/vicon/DragonFly13/odom" to="/dragonfly13/odom"/>
+  </node>
+  <!--mocap_vicon end-->
+
+  <!--darknet_ros start-->
+  <!-- Console launch prefix -->
+  <arg name="launch_prefix" default=""/>
+
+  <!-- CompressedImage or Image -->
+  <arg name="yolo_compressed"		default="true"/>
+
+  <!-- Config and weights folder. -->
+  <arg name="yolo_weights_path"          default="$(find darknet_ros)/yolo_network_config/weights"/>
+  <arg name="yolo_config_path"           default="$(find darknet_ros)/yolo_network_config/cfg"/>
+  <arg name="yolo_data_path"             default="$(find darknet_ros)/data"/>
+
+  <!-- ROS and network parameter files -->
+  <arg name="ros_param_file"             default="$(find darknet_ros)/config/ros.yaml"/>
+  <arg name="network_param_file"         default="$(find darknet_ros)/config/drone.yaml"/>
+
+  <!-- Load parameters -->
+  <rosparam command="load" ns="darknet_ros" file="$(arg ros_param_file)"/>
+  <rosparam command="load" ns="darknet_ros" file="$(arg network_param_file)"/>
+
+  <!-- Decompressing image arring from network -->
+  <!--node name="detector_decompressor" pkg="image_transport" type="republish" args="compressed in:=/gaze/image_republish out:=/gaze/image_decompressed" /-->
+
+
+  <!-- Start darknet and ros wrapper -->
+  <node pkg="darknet_ros" type="darknet_ros" name="darknet_ros" output="screen" launch-prefix="$(arg launch_prefix)">
+    <param name="weights_path"          value="$(arg yolo_weights_path)" />
+    <param name="config_path"           value="$(arg yolo_config_path)" />
+    <param name="data_path"             value="$(arg yolo_data_path)" />
+  </node>
+
+  <node name="detector_compressor" pkg="image_transport" type="republish" args="raw in:=/darknet_ros/detection_image out:=/darknet_ros/detection_image_republish" />
+  <!--darknet end-->
+  <!--py_image_processor start-->
+  <node name="py_image_processor" pkg="py_image_processor" type="proocessor.py" />
+  <!--py_image_processor end-->
+
+</launch>

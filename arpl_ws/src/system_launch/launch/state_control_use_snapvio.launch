@@ -1,0 +1,68 @@
+<?xml version="1.0"?>
+
+<launch>
+  <arg name="mav_name" default="$(env MAV_NAME)"/>
+
+
+  <arg name="8074" default="true"/>
+
+  <group ns="$(arg mav_name)">
+
+
+    <node pkg="nodelet" type="nodelet" name="vio_nodelet_man" args="manager" output="screen"/>
+
+    <!-- camera nodelet -->
+    <node pkg="nodelet" type="nodelet" name="snap_cam_nodelet"
+       args="load snap_cam_ros/driver vio_nodelet_man">
+      <param name="camera_name" value="downward"/>
+      <param name="format" value="1"/>
+      <param name="camera_number" value="1"/>
+      <param name="width" value="640"/>
+      <param name="height" value="480"/>
+      <param name="frame_id" value="dfc"/>
+      <param name="is_cam_master" value="true"/>
+    </node>
+
+    <param name="image_raw/compressed/jpeg_quality" value="50"/>
+
+    <!-- VIO nodelet -->
+    <node pkg="nodelet" type="nodelet" name="snap_vio_nodelet"
+          args="load snap_vio/driver vio_nodelet_man" output="screen">
+      <remap from="camera_info" to="fisheye/camera_info"/>
+
+      <param name="delta" value="-0.0068"  if="$(arg 8074)"/>
+      <param name="delta" value=".002" unless="$(arg 8074)"/>
+      <remap from="vio/odometry" to="vio_pose"/>
+    </node>
+
+    <!-- fisheye camera info spoofer -->
+    <include file="$(find snap_vio)/launch/fisheye_camera_info.launch"/>
+
+    <!-- imu nodelet -->
+    <node pkg="nodelet" type="nodelet" name="snap_imu_nodelet"
+          args="load snap_imu/driver vio_nodelet_man" output="screen">
+    </node>
+
+    <!-- cpa nodelet -->
+    <node pkg="nodelet" type="nodelet" name="snap_cpa_nodelet"
+          args="load snap_cpa/driver vio_nodelet_man" output="screen">
+    </node>
+  </group>
+
+
+
+  <!-- Board/Vehicle URDF -->
+
+  <include file="$(find qflight_descriptions)/launch/qflight_robot.launch">
+    <arg name="board" value="sdf" if="$(arg 8074)"/>
+    <arg name="board" value="sdf_pro" unless="$(arg 8074)"/>
+    <arg name="vehicle" value="none"/>
+    <arg name="imu_is_root_tf" value="true"/>    
+  </include>  
+
+<!-- state control system launch -->
+
+    <include file="$(find system_launch)/launch/state_control_without_vio.launch"/>
+
+
+</launch>

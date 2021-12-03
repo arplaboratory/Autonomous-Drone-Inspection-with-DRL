@@ -1,0 +1,100 @@
+<launch>
+  <arg name="mav_name" default="$(env MAV_NAME)"/>
+  <!--arg name="mav_name" default="dragonfly_2"/-->
+  <arg name="mass" default="0.253"/>
+  <arg name="show_down_img" default="false"/>
+  <arg name="control_rate" default="500"/>
+  <arg name="multimaster_config_name" default="multimaster_params.yaml"/>
+
+  <!--arg name="odom_topic" value="/$(arg mav_name)/quadrotor_ukf/control_odom"/-->
+  <arg name="odom_topic" value="/$(arg mav_name)/odom"/>
+
+  <group ns="$(arg mav_name)">
+
+    <param name="mass" value="$(arg mass)"/>
+
+    <node pkg="nodelet"
+      type="nodelet"
+      name="nodelet_manager_control"
+      args="manager"
+      output="screen">
+     <rosparam file="$(find system_launch)/config/mav_manager_params.yaml" />
+   </node>
+
+    <node pkg="nodelet"
+      type="nodelet"
+      name="trackers_manager"
+      args="load trackers_manager/TrackersManager nodelet_manager_control"
+      output="screen">
+      <rosparam file="$(find system_launch)/config/pl_trackers.yaml"/>
+      <rosparam file="$(find system_launch)/config/tracker_params.yaml"/>
+      <rosparam file="$(find system_launch)/config/QuadrotorQ2_gains.yaml"/>
+      <remap from="~odom" to="$(arg odom_topic)"/>
+      <remap from="~cmd" to="position_cmd"/>
+    </node>
+
+    <node pkg="nodelet"
+      type="nodelet"
+      args="load so3_control/RBPLSO3ControlNodelet nodelet_manager_control"
+      name="so3_control"
+      required="true"
+      output="screen">
+      <rosparam file="$(find system_launch)/config/copr-transportation/$(arg mav_name)/robot_payload_gains.yaml"/>
+      <param name="mass" value="$(arg mass)"/>
+      <param name="num_robots" value="3"/>
+      <param name="use_external_yaw" value="false"/>
+      <remap from="~odom" to="$(arg odom_topic)"/>
+      <remap from="~vicon_odom" to="odom"/>
+      <remap from="~position_cmd" to="position_cmd"/>
+      <remap from="~cen_pl_cmd" to="/payload/cen_pl_cmd"/>
+      <remap from="~so3_cmd" to="so3_cmd"/>
+      <remap from="~motors" to="motors"/>
+      <remap from="~attach" to="attach"/>
+    </node>
+
+    <node pkg="nodelet"
+      type="nodelet"
+      args="standalone qualcomm_interface/SO3CmdToQualcomm"
+      name="so3cmd_to_qualcomm_nodelet"
+      required="true"
+      clear_params="true"
+      output="screen">
+      <remap from="~odom" to="$(arg odom_topic)"/>
+      <remap from="~so3_cmd" to="so3_cmd"/>
+    </node>
+
+    <node pkg="vio_qc"
+      type="MVSampleVISLAMEagle"
+      name="MVSampleVISLAMEagle"
+      output="screen" args = "-a">
+      <remap from="~vio_pose" to="vio_pose"/>
+      <remap from="~imu" to="imu"/>
+      <param name="show_img_ros" type="bool" value="$(arg show_down_img)" />
+      <param name="control_rate" type="int" value="$(arg control_rate)" />
+    </node>
+
+    <node pkg="quadrotor_ukf"
+      type="quadrotor_ukf"
+      name="quadrotor_ukf"
+      output="screen">
+      <remap from="~odom_slam" to="vio_pose"/>
+      <remap from="~imu" to="imu"/>
+    </node>
+
+    <node pkg="mav_manager"
+      type="mav_services"
+      name="mav_services"
+      output="screen">
+      <rosparam file="$(find system_launch)/config/mav_manager_params.yaml"/>
+      <remap from="odom" to="$(arg odom_topic)"/>
+    </node>
+
+  <node pkg="master_discovery_fkie" type="master_discovery" name="master_discovery" output="screen">
+	      <!--param name="mcast_group" value="228.0.0.1" /-->
+  </node>
+
+  <node pkg="master_sync_fkie" type="master_sync" name="multimaster_client_sync" output="screen">
+	      <rosparam file="$(find master_sync_fkie)/config/$(arg mav_name)/$(arg multimaster_config_name)"/>
+  </node>
+  </group>
+</launch>
