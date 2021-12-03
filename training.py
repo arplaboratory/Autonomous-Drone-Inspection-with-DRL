@@ -65,6 +65,8 @@ if __name__ == '__main__':
     model = SAC(policy_name, env, verbose=1, buffer_size=opt.buffer_size, batch_size=opt.batch_size,
                 tensorboard_log="./tb/")
 
+    if os.path.isfile('./logs/final_model.pth'):
+        model.load('./logs/final_model.pth')
     if os.path.isfile('./buffer.pth'):
         model.load_replay_buffer('./buffer.pth')
 
