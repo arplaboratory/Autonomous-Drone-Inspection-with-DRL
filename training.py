@@ -51,7 +51,7 @@ if __name__ == '__main__':
     # env = SubprocVecEnv(
     #     [make_env(opt.env_id, i, opt.global_seed, opt.radius, opt.z_0, opt.max_step, opt.obs_size) for i in range(opt.max_envs_num)])
     # Single env
-    env = make_env(opt.env_id, 0, opt.global_seed, opt.radius, opt.z_0, opt.max_step, opt.obs_size)
+    env = make_env(opt.env_id, 0, opt.global_seed, opt.radius, opt.z_0, opt.max_step, opt.obs_size)()
 
     if opt.policy == 'cnn':
         policy_name = 'CnnPolicy'
@@ -65,11 +65,14 @@ if __name__ == '__main__':
     model = SAC(policy_name, env, verbose=1, buffer_size=opt.buffer_size, batch_size=opt.batch_size,
                 tensorboard_log="./tb/")
 
+    if os.path.isfile('./logs/final_model.pth'):
+        model.load('./logs/final_model.pth')
     if os.path.isfile('./buffer.pth'):
         model.load_replay_buffer('./buffer.pth')
 
-    model.learn(total_timesteps=opt.total_timesteps, callback=eval_callback)
-
-    # Save Replay Buffer
-    model.save('./logs/final_model.pth')
-    model.save_replay_buffer('./buffer.pth')
+    try:
+        model.learn(total_timesteps=opt.total_timesteps, callback=eval_callback)
+    finally:
+        # Save Replay Buffer
+        model.save('./logs/final_model.pth')
+        model.save_replay_buffer('./buffer.pth')
