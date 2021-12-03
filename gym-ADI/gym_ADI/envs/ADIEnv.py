@@ -41,7 +41,7 @@ class ADIEnv(Env):
         self.z_0 = z_0
         self.center_image = self.image_size[0] // 2, self.image_size[1] // 2  # Y, X
         self.current_step = 0
-        self.current_polar_position = self.radius[0], 0, np.pi/2  # r, phi, theta
+        self.current_polar_position = self.radius[0], 0, np.pi/4  # r, phi, theta
         self.current_score = 0
 
     def step(self, action):
@@ -56,7 +56,8 @@ class ADIEnv(Env):
             done = False
         else:
             done = True
-        info = {}
+        info = {'reward': reward, 'score': self.current_score}
+        print(info)
         return obs, reward, done, info
 
     def render(self, mode='machine'):
@@ -69,7 +70,7 @@ class ADIEnv(Env):
     def reset(self):
 
         # init
-        self.current_polar_position = self.radius[0], 0, np.pi/2  # r, phi, theta
+        self.current_polar_position = self.radius[0], 0, np.pi/4  # r, phi, theta
         self.current_score = 0
 
         obs, detect = self.get_image_detect_after_action()
@@ -137,6 +138,8 @@ class ADIEnv(Env):
         else:
             r_0, phi_0, theta_0 = self.current_polar_position
             d_r, d_phi, d_theta = action
+            # normalize d_theta from [-pi/2, pi/2] to [-pi/4, pi/4]
+            d_theta = (d_theta + np.pi/2)/2 - np.pi/4
             # normalize d_r from [-pi/2, pi/2] to range
             d_r = (d_r / (np.pi / 2)) * (self.radius[1] - self.radius[0])
             r_t = r_0 + d_r
@@ -151,7 +154,7 @@ class ADIEnv(Env):
             phi_t += 2 * np.pi
         elif phi_t > 2 * np.pi:
             phi_t -= 2 * np.pi
-        theta_t = np.clip(theta_t, 0, np.pi / 2)
+        theta_t = np.clip(theta_t, np.pi/6 , np.pi/2) # 60 degrees
 
         return r_t, phi_t, theta_t
 
