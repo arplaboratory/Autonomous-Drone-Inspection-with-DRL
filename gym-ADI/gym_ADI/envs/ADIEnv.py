@@ -9,14 +9,19 @@ from gym.spaces import Box
 
 
 class ADIEnv(Env):
-    def __init__(self, rank=0, radius=None, z_0=0.33, image_size=None, max_step=5):
+    def __init__(self, rank=0, radius=None, z_0=0.33, obs_size=None, max_step=5):
         super().__init__()
         if radius is None:
             radius = [0.7, -1.0]  # r_min, r_max
-        if image_size is None:
-            image_size = [480, 640]  # H, W
+        self.image_size = [480, 640]  # H, W
+        if obs_size is None:
+            self.obs_size = self.image_size
+        elif type(obs_size) is int:
+            self.obs_size = [obs_size, obs_size]
+        else:
+            self.obs_size = obs_size
+
         self.radius = radius
-        self.image_size = image_size
         self.rank = rank
         self.enable_radius_change = True if self.radius[1] != -1.0 else False  # Sphere
 
@@ -100,6 +105,9 @@ class ADIEnv(Env):
                     current_retry += 1
             print(f'Sleep 10s: Cannot get the image after {self.max_retry_time} retries.')
             time.sleep(10.0)
+
+        # resize image
+        image = image.resize(tuple(self.obs_size))
 
         return np.array(image), detect
 

@@ -4,13 +4,12 @@ import os
 import gym
 from stable_baselines3.common.callbacks import EvalCallback
 from stable_baselines3.common.utils import set_random_seed
-from stable_baselines3.common.vec_env import SubprocVecEnv
 from stable_baselines3.sac import SAC
 
 
 # Reference: https://stable-baselines3.readthedocs.io/en/master/guide/examples.html#multiprocessing-unleashing-the-power-of-vectorized-environments
 
-def make_env(env_id, rank, seed, radius, z_0, max_step):
+def make_env(env_id, rank, seed, radius, z_0, max_step, obs_size):
     """
     Utility function for multiprocessed env.
     :param z_0: z_0
@@ -21,7 +20,7 @@ def make_env(env_id, rank, seed, radius, z_0, max_step):
     """
 
     def _init():
-        env = gym.make(env_id, rank=rank, radius=radius, z_0=z_0, max_step=max_step)
+        env = gym.make(env_id, rank=rank, radius=radius, z_0=z_0, max_step=max_step, obs_size=obs_size)
         env.seed(seed + rank)
         return env
 
@@ -41,14 +40,18 @@ if __name__ == '__main__':
     parser.add_argument('-r_min', type=float, default=0.7)
     parser.add_argument('-z_0', type=float, default=0.33)
     parser.add_argument('-max_step', type=int, default=5)
+    parser.add_argument('-obs_size', type=int, default=256)
     parser.add_argument('-buffer_size', type=int, default=100000)
     parser.add_argument('-total_timesteps', type=int, default=25000)
 
     opt = parser.parse_args()
     opt.radius = [opt.r_min, opt.r_max]
 
-    env = SubprocVecEnv(
-        [make_env(opt.env_id, i, opt.global_seed, opt.radius, opt.z_0, opt.max_step) for i in range(opt.max_envs_num)])
+    # Multiple env
+    # env = SubprocVecEnv(
+    #     [make_env(opt.env_id, i, opt.global_seed, opt.radius, opt.z_0, opt.max_step, opt.obs_size) for i in range(opt.max_envs_num)])
+    # Single env
+    env = make_env(opt.env_id, 0, opt.global_seed, opt.radius, opt.z_0, opt.max_step, opt.obs_size)
 
     if opt.policy == 'cnn':
         policy_name = 'CnnPolicy'
