@@ -36,7 +36,7 @@ class ADIEnv(Env):
 
         self.filename = '/home/jiuhong/image.png'
         self.ros_pattern = "rosservice call /call_robot \"{{x: {x:.1f}, y: {y:.1f}, z: {z:.1f}, yaw: {yaw:.1f},filename: {filename:s}, topic: '/hires/image_raw/compressed', robot: 'dragonfly12'}}\""
-        self.max_retry_time = 3
+        self.max_retry_time = 10
         self.max_step = max_step
         self.z_0 = z_0
         self.center_image = self.image_size[0] // 2, self.image_size[1] // 2  # Y, X
