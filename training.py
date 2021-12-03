@@ -72,8 +72,6 @@ if __name__ == '__main__':
 
     try:
         model.learn(total_timesteps=opt.total_timesteps, callback=eval_callback)
-    except Exception:
-        raise Exception
     finally:
         # Save Replay Buffer
         model.save('./logs/final_model.pth')
