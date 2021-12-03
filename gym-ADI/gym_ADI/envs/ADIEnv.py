@@ -49,7 +49,6 @@ class ADIEnv(Env):
         self.current_polar_position = self.radius[1], 0, 0  # r, phi, theta
         self.current_score = 0
         self.action_safe = True
-        self.real_action = None
 
     def step(self, action):
         obs, detect = self.get_image_detect_after_action(action)
@@ -77,7 +76,7 @@ class ADIEnv(Env):
     def reset(self):
 
         # init
-        self.current_polar_position = self.radius[1], random.random()*np.pi*2, random.random()*np.pi/2  # r, phi, theta
+        self.current_polar_position = self.radius[1], random.random()*np.pi*2, random.random()*np.pi/4 + np.pi/4  # r, phi, theta
         self.current_score = 0
 
         obs, detect = self.get_image_detect_after_action()
@@ -87,18 +86,18 @@ class ADIEnv(Env):
         return obs
 
     def get_image_detect_after_action(self, action=None):
-
-        if action is not None:
-            self.current_polar_position = self.get_new_position(action)  # action is delta r, delta phi and delta theta
-
-        x, y, z, yaw = self.polar_to_cart(self.current_polar_position)
-
         current_retry = 0
         image = None
         detect = None  # xmin ymin xmax ymax probability(detector) xmin ymin xmax ymax(vicon)
         self.action_safe = True
-        self.real_action = None
+
         while image is None:
+            if action is not None:
+                self.current_polar_position = self.get_new_position(action)  # action is delta r, delta phi and delta theta
+            elif self.action_safe is False:
+                # Unsafe reset, random again
+                self.current_polar_position = self.radius[1], random.random()*np.pi*2, random.random()*np.pi/4 + np.pi/4  # r, phi, theta
+            x, y, z, yaw = self.polar_to_cart(self.current_polar_position)
             while current_retry < self.max_retry_time:
                 try:
                     process = subprocess.run(
@@ -113,7 +112,9 @@ class ADIEnv(Env):
                         break
                     elif success == 'Bump':
                         self.action_safe = False
-                        self.real_action = self.action_space.sample()
+                        if action is not None:
+                            action = self.action_space.sample()  # resample action if not resetting
+                        current_retry = self.max_retry_time  # finish inner loop right now
                         raise KeyError(process.stdout)
                     else:
                         raise KeyError(process.stdout)
@@ -138,7 +139,7 @@ class ADIEnv(Env):
         yaw = phi - np.pi
         if yaw < 0:
             yaw += 2 * np.pi
-        elif yaw > 2 * np.pi:
+        elif yaw >= 2 * np.pi:
             yaw -= 2 * np.pi
 
         return x, y, z, yaw
