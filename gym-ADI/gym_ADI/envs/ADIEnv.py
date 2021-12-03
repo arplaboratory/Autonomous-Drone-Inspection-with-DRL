@@ -41,7 +41,7 @@ class ADIEnv(Env):
         self.z_0 = z_0
         self.center_image = self.image_size[0] // 2, self.image_size[1] // 2  # Y, X
         self.current_step = 0
-        self.current_polar_position = self.radius[0], 0, 0  # r, phi, theta
+        self.current_polar_position = self.radius[0], 0, np.pi/2  # r, phi, theta
         self.current_score = 0
 
     def step(self, action):
@@ -69,7 +69,7 @@ class ADIEnv(Env):
     def reset(self):
 
         # init
-        self.current_polar_position = self.radius[0], 0, 0  # r, phi, theta
+        self.current_polar_position = self.radius[0], 0, np.pi/2  # r, phi, theta
         self.current_score = 0
 
         obs, detect = self.get_image_detect_after_action()
