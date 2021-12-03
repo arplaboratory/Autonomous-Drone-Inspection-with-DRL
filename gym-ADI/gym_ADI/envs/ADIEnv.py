@@ -161,37 +161,35 @@ class ADIEnv(Env):
         prob = float(prob)
         score = 0
 
-        # get no gt, return 0 reward (same score)
-        if xmin_gt == -1:
-            return self.current_score
-
         # If we get a bbox, score + 1
         if prob >= 0.4:
             score += 1
 
-        # The second part is iou of pred and gt
-        pred_area = (xmax - xmin) * (ymax - ymin)
-        gt_area = (xmax_gt - xmin_gt) * (ymax_gt - ymin_gt)
+            # The second part is iou of pred and gt if we get a bbox
+            pred_area = (xmax - xmin) * (ymax - ymin)
+            gt_area = (xmax_gt - xmin_gt) * (ymax_gt - ymin_gt)
 
-        left = max(xmin, xmin_gt)
-        right = min(xmax, xmax_gt)
-        top = max(ymin, ymin_gt)
-        bottom = min(ymax, ymax_gt)
+            left = max(xmin, xmin_gt)
+            right = min(xmax, xmax_gt)
+            top = max(ymin, ymin_gt)
+            bottom = min(ymax, ymax_gt)
 
-        if left < right and top < bottom:
-            intersection = (right - left) * (bottom - top)
-        else:
-            intersection = 0
-        score += intersection / (pred_area + gt_area - intersection) * 1.0
+            if left < right and top < bottom:
+                intersection = (right - left) * (bottom - top)
+            else:
+                intersection = 0
+            iou = intersection / (pred_area + gt_area - intersection) * 1.0
+            score += iou
 
-        # More score if the center of the bbox is located at the center of the image (currently use gt bbox)
-        center_gt = (xmax_gt + xmin_gt) / 2, (ymax_gt + ymin_gt) / 2
-        distance = np.sqrt((center_gt[0] - self.center_image[1]) ** 2 + (center_gt[1] - self.center_image[0]) ** 2)
-        lower_bound = min(self.center_image) / 4
-        upper_bound = min(self.center_image) / 2
-        if distance <= lower_bound:
-            score += 2
-        else:
-            score += 2 - (distance - lower_bound) / (upper_bound - lower_bound)
+            if iou > 0.6:
+                # More score if the center of the bbox is located at the center of the image (currently use gt bbox)
+                center_gt = (xmax_gt + xmin_gt) / 2, (ymax_gt + ymin_gt) / 2
+                distance = np.sqrt((center_gt[0] - self.center_image[1]) ** 2 + (center_gt[1] - self.center_image[0]) ** 2)
+                lower_bound = min(self.center_image) / 4
+                upper_bound = min(self.center_image) / 2
+                if distance <= lower_bound:
+                    score += 2
+                elif distance <= 2 * upper_bound:
+                    score += 2 - (distance - lower_bound) / (upper_bound - lower_bound)
 
         return score
