@@ -1,4 +1,5 @@
 import subprocess
+import time
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -8,10 +9,12 @@ from gym.spaces import Box
 
 
 class ADIEnv(Env):
-    def __init__(self, rank=0, radius=None, z_0=0.33, image_size=256, max_step=10):
+    def __init__(self, rank=0, radius=None, z_0=0.33, image_size=None, max_step=5):
         super().__init__()
         if radius is None:
             radius = [0.7, -1.0]  # r_min, r_max
+        if image_size is None:
+            image_size = [480, 640]  # H, W
         self.radius = radius
         self.image_size = image_size
         self.rank = rank
@@ -28,23 +31,23 @@ class ADIEnv(Env):
 
         self.filename = '/home/jiuhong/image.png'
         self.ros_pattern = "rosservice call /call_robot \"{{x: {x:.1f}, y: {y:.1f}, z: {z:.1f}, yaw: {yaw:.1f},filename: {filename:s}, topic: '/hires/image_raw/compressed', robot: 'dragonfly12'}}\""
-        self.max_retry_time = 10
+        self.max_retry_time = 3
         self.max_step = max_step
         self.z_0 = z_0
+        self.center_image = self.image_size[0] // 2, self.image_size[1] // 2  # Y, X
         self.current_step = 0
         self.current_polar_position = self.radius[0], 0, 0  # r, phi, theta
-
-        self.last_score = 0
+        self.current_score = 0
 
     def step(self, action):
-        obs = self.get_image_after_action(action)
+        obs, detect = self.get_image_detect_after_action(action)
 
-        score = self.get_score(obs)
-        reward = score - self.last_score
-        self.last_score = score
+        score = self.get_score(detect)
+        reward = score - self.current_score
+        self.current_score = score
 
         self.current_step += 1
-        if self.current_step <= self.max_step:
+        if self.current_step < self.max_step:
             done = False
         else:
             done = True
@@ -59,21 +62,18 @@ class ADIEnv(Env):
         return image_np
 
     def reset(self):
-        obs = self.get_image_after_action()
 
-        score = self.get_score(obs)
-        reward = score - self.last_score
-        self.last_score = score
+        # init
+        self.current_polar_position = self.radius[0], 0, 0  # r, phi, theta
+        self.current_score = 0
 
-        self.current_step = 1
-        if self.current_step <= self.max_step:
-            done = False
-        else:
-            done = True
-        info = None
-        return obs, reward, done, info
+        obs, detect = self.get_image_detect_after_action()
+        score = self.get_score(detect)
+        self.current_score = score
+        self.current_step = 0
+        return obs
 
-    def get_image_after_action(self, action=None):
+    def get_image_detect_after_action(self, action=None):
 
         if action is not None:
             self.current_polar_position = self.get_new_position(action)  # action is delta r, delta phi and delta theta
@@ -82,22 +82,26 @@ class ADIEnv(Env):
 
         current_retry = 0
         image = None
-        while current_retry < self.max_retry_time:
-            try:
-                process = subprocess.run(
-                    self.ros_pattern.format(x=x, y=y, z=z, yaw=yaw, filename=self.filename), shell=True,
-                    capture_output=True)
-                if process.stdout == b'success: True\n':
-                    image = Image.open(self.filename)
-                    break
-                else:
-                    raise KeyError(process.stdout)
-            except KeyError:
-                current_retry += 1
+        detect = None  # xmin ymin xmax ymax probability(detector) xmin ymin xmax ymax(vicon)
+        while image is None:
+            while current_retry < self.max_retry_time:
+                try:
+                    process = subprocess.run(
+                        self.ros_pattern.format(x=x, y=y, z=z, yaw=yaw, filename=self.filename), shell=True,
+                        capture_output=True)
+                    output = process.stdout.decode("utf-8").split()
+                    if len(output) == 10:
+                        image = Image.open(self.filename)
+                        detect = output[1:]
+                        break
+                    else:
+                        raise KeyError(process.stdout)
+                except KeyError:
+                    current_retry += 1
+            print(f'Sleep 10s: Cannot get the image after {self.max_retry_time} retries.')
+            time.sleep(10.0)
 
-        if image is None:
-            raise KeyError('Error: Cannot get the image after 10 retries.')
-        return np.array(image)
+        return np.array(image), detect
 
     def polar_to_cart(self, polar_position):
         r, phi, theta = polar_position
@@ -138,5 +142,38 @@ class ADIEnv(Env):
 
         return r_t, phi_t, theta_t
 
-    def get_score(self, obs):
-        return 0
+    def get_score(self, detect):
+
+        xmin, ymin, xmax, ymax, prob, xmin_gt, ymin_gt, xmax_gt, ymax_gt = detect  # 640, 480
+        score = 0
+
+        # If we get a bbox, score + 1
+        if prob >= 0.4:
+            score += 1
+
+        # The second part is iou of pred and gt
+        pred_area = (xmax - xmin) * (ymax - ymin)
+        gt_area = (xmax_gt - xmin_gt) * (ymax_gt - ymin_gt)
+
+        left = max(xmin, xmin_gt)
+        right = min(xmax, xmax_gt)
+        top = max(ymin, ymin_gt)
+        bottom = min(ymax, ymax_gt)
+
+        if left < right and top < bottom:
+            intersection = (right - left) * (bottom - top)
+        else:
+            intersection = 0
+        score += intersection / (pred_area + gt_area - intersection) * 1.0
+
+        # More score if the center of the bbox is located at the center of the image (currently use gt bbox)
+        center_gt = (xmax_gt + xmin_gt) / 2, (ymax_gt + ymin_gt) / 2
+        distance = np.sqrt((center_gt[0] - self.center_image[1]) ** 2 + (center_gt[1] - self.center_image[0]) ** 2)
+        lower_bound = min(self.center_image) / 4
+        upper_bound = min(self.center_image) / 2
+        if distance <= lower_bound:
+            score += 2
+        elif distance <= upper_bound:
+            score += 1
+
+        return score
