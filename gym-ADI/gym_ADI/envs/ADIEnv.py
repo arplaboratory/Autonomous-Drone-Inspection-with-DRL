@@ -9,7 +9,7 @@ from gym.spaces import Box
 
 
 class ADIEnv(Env):
-    def __init__(self, rank=0, radius=None, z_0=0.33, obs_size=None, max_step=5):
+    def __init__(self, rank=0, radius=None, z_0=0.35, obs_size=None, max_step=5):
         super().__init__()
         if radius is None:
             radius = [0.7, -1.0]  # r_min, r_max
@@ -31,12 +31,12 @@ class ADIEnv(Env):
             self.action_space = Box(low=-np.pi / 2, high=np.pi / 2, shape=[3], dtype=np.float32)
 
         self.observation_space = Box(low=0, high=255,
-                                     shape=[3, self.image_size, self.image_size],
+                                     shape=[3, self.obs_size[0], self.obs_size[1]],
                                      dtype=np.uint8)
 
         self.filename = '/home/jiuhong/image.png'
         self.ros_pattern = "rosservice call /call_robot \"{{x: {x:.1f}, y: {y:.1f}, z: {z:.1f}, yaw: {yaw:.1f},filename: {filename:s}, topic: '/hires/image_raw/compressed', robot: 'dragonfly12'}}\""
-        self.max_retry_time = 3
+        self.max_retry_time = 10
         self.max_step = max_step
         self.z_0 = z_0
         self.center_image = self.image_size[0] // 2, self.image_size[1] // 2  # Y, X
@@ -94,14 +94,17 @@ class ADIEnv(Env):
                     process = subprocess.run(
                         self.ros_pattern.format(x=x, y=y, z=z, yaw=yaw, filename=self.filename), shell=True,
                         capture_output=True)
-                    output = process.stdout.decode("utf-8").split()
-                    if len(output) == 9:
+                    output_raw = process.stdout.decode("utf-8")
+                    output = output_raw.split()
+                    success = output[1][1:]   # raw string is "True
+                    if success == "True":
                         image = Image.open(self.filename)
-                        detect = output
+                        detect = output[2:-1]
                         break
                     else:
                         raise KeyError(process.stdout)
                 except KeyError:
+                    print(f'Error: {output_raw}')
                     current_retry += 1
             print(f'Sleep 10s: Cannot get the image after {self.max_retry_time} retries.')
             time.sleep(10.0)

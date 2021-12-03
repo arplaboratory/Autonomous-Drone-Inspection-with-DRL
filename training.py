@@ -2,6 +2,8 @@ import argparse
 import os
 
 import gym
+import gym_ADI
+
 from stable_baselines3.common.callbacks import EvalCallback
 from stable_baselines3.common.utils import set_random_seed
 from stable_baselines3.sac import SAC
@@ -38,7 +40,7 @@ if __name__ == '__main__':
     parser.add_argument('-batch_size', type=int, default=64)
     parser.add_argument('-r_max', type=float, default=1.0)  # -1.0 means we only allow run on a sphere
     parser.add_argument('-r_min', type=float, default=0.7)
-    parser.add_argument('-z_0', type=float, default=0.33)
+    parser.add_argument('-z_0', type=float, default=0.35)
     parser.add_argument('-max_step', type=int, default=5)
     parser.add_argument('-obs_size', type=int, default=256)
     parser.add_argument('-buffer_size', type=int, default=100000)
@@ -74,5 +76,6 @@ if __name__ == '__main__':
         model.learn(total_timesteps=opt.total_timesteps, callback=eval_callback)
     finally:
         # Save Replay Buffer
-        model.save('./logs/final_model.pth')
-        model.save_replay_buffer('./buffer.pth')
+        if model.num_timesteps > 1000:
+            model.save('./logs/final_model.pth')
+            model.save_replay_buffer('./buffer.pth')
