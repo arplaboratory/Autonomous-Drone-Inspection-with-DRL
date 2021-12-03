@@ -94,7 +94,8 @@ class ADIEnv(Env):
                     process = subprocess.run(
                         self.ros_pattern.format(x=x, y=y, z=z, yaw=yaw, filename=self.filename), shell=True,
                         capture_output=True)
-                    output = process.stdout.decode("utf-8").split()
+                    output_raw = process.stdout.decode("utf-8")
+                    output = output_raw.split()
                     success = output[1][1:]   # raw string is "True
                     if success == "True":
                         image = Image.open(self.filename)
@@ -103,6 +104,7 @@ class ADIEnv(Env):
                     else:
                         raise KeyError(process.stdout)
                 except KeyError:
+                    print(f'Error: {output_raw}')
                     current_retry += 1
             print(f'Sleep 10s: Cannot get the image after {self.max_retry_time} retries.')
             time.sleep(10.0)
