@@ -95,9 +95,9 @@ class ADIEnv(Env):
                         self.ros_pattern.format(x=x, y=y, z=z, yaw=yaw, filename=self.filename), shell=True,
                         capture_output=True)
                     output = process.stdout.decode("utf-8").split()
-                    if len(output) == 10:
+                    if len(output) == 9:
                         image = Image.open(self.filename)
-                        detect = output[1:]
+                        detect = output
                         break
                     else:
                         raise KeyError(process.stdout)
