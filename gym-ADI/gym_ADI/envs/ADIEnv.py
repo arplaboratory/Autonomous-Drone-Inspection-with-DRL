@@ -173,7 +173,7 @@ class ADIEnv(Env):
         upper_bound = min(self.center_image) / 2
         if distance <= lower_bound:
             score += 2
-        elif distance <= upper_bound:
-            score += 1
+        else:
+            score += 2 - (distance - lower_bound)/(upper_bound - lower_bound)
 
         return score
