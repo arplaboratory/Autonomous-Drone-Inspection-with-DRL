@@ -31,17 +31,17 @@ class ADIEnv(Env):
             self.action_space = Box(low=-np.pi / 2, high=np.pi / 2, shape=[3], dtype=np.float32)
 
         self.observation_space = Box(low=0, high=255,
-                                     shape=[3, self.obs_size[0], self.obs_size[1]],
+                                     shape=[self.obs_size[0], self.obs_size[1], 3],
                                      dtype=np.uint8)
 
         self.filename = '/home/jiuhong/image.png'
         self.ros_pattern = "rosservice call /call_robot \"{{x: {x:.1f}, y: {y:.1f}, z: {z:.1f}, yaw: {yaw:.1f},filename: {filename:s}, topic: '/hires/image_raw/compressed', robot: 'dragonfly12'}}\""
-        self.max_retry_time = 10
+        self.max_retry_time = 100
         self.max_step = max_step
         self.z_0 = z_0
         self.center_image = self.image_size[0] // 2, self.image_size[1] // 2  # Y, X
         self.current_step = 0
-        self.current_polar_position = self.radius[0], 0, 0  # r, phi, theta
+        self.current_polar_position = self.radius[0], 0, np.pi/4  # r, phi, theta
         self.current_score = 0
 
     def step(self, action):
@@ -56,7 +56,8 @@ class ADIEnv(Env):
             done = False
         else:
             done = True
-        info = None
+        info = {'reward': reward, 'score': self.current_score}
+        print(info)
         return obs, reward, done, info
 
     def render(self, mode='machine'):
@@ -69,7 +70,7 @@ class ADIEnv(Env):
     def reset(self):
 
         # init
-        self.current_polar_position = self.radius[0], 0, 0  # r, phi, theta
+        self.current_polar_position = self.radius[0], 0, np.pi/4  # r, phi, theta
         self.current_score = 0
 
         obs, detect = self.get_image_detect_after_action()
@@ -97,17 +98,19 @@ class ADIEnv(Env):
                     output_raw = process.stdout.decode("utf-8")
                     output = output_raw.split()
                     success = output[1][1:]   # raw string is "True
-                    if success == "True":
+                    if success == "True" and int(output[7])!=-1:
                         image = Image.open(self.filename)
                         detect = output[2:-1]
                         break
                     else:
                         raise KeyError(process.stdout)
-                except KeyError:
+                except Exception:
                     print(f'Error: {output_raw}')
                     current_retry += 1
-            print(f'Sleep 10s: Cannot get the image after {self.max_retry_time} retries.')
-            time.sleep(10.0)
+            if image is None:
+                current_retry = 0
+                print(f'Sleep 10s: Cannot get the image after {self.max_retry_time} retries.')
+                time.sleep(10.0)
 
         # resize image
         image = image.resize(tuple(self.obs_size))
@@ -135,6 +138,8 @@ class ADIEnv(Env):
         else:
             r_0, phi_0, theta_0 = self.current_polar_position
             d_r, d_phi, d_theta = action
+            # normalize d_theta from [-pi/2, pi/2] to [-pi/4, pi/4]
+            d_theta = (d_theta + np.pi/2)/2 - np.pi/4
             # normalize d_r from [-pi/2, pi/2] to range
             d_r = (d_r / (np.pi / 2)) * (self.radius[1] - self.radius[0])
             r_t = r_0 + d_r
@@ -149,7 +154,7 @@ class ADIEnv(Env):
             phi_t += 2 * np.pi
         elif phi_t > 2 * np.pi:
             phi_t -= 2 * np.pi
-        theta_t = np.clip(theta_t, 0, np.pi / 2)
+        theta_t = np.clip(theta_t, np.pi/6 , np.pi/2) # 60 degrees
 
         return r_t, phi_t, theta_t
 
@@ -161,37 +166,35 @@ class ADIEnv(Env):
         prob = float(prob)
         score = 0
 
-        # get no gt, return 0 reward (same score)
-        if xmin_gt == -1:
-            return self.current_score
-
         # If we get a bbox, score + 1
         if prob >= 0.4:
             score += 1
 
-        # The second part is iou of pred and gt
-        pred_area = (xmax - xmin) * (ymax - ymin)
-        gt_area = (xmax_gt - xmin_gt) * (ymax_gt - ymin_gt)
+            # The second part is iou of pred and gt if we get a bbox
+            pred_area = (xmax - xmin) * (ymax - ymin)
+            gt_area = (xmax_gt - xmin_gt) * (ymax_gt - ymin_gt)
 
-        left = max(xmin, xmin_gt)
-        right = min(xmax, xmax_gt)
-        top = max(ymin, ymin_gt)
-        bottom = min(ymax, ymax_gt)
+            left = max(xmin, xmin_gt)
+            right = min(xmax, xmax_gt)
+            top = max(ymin, ymin_gt)
+            bottom = min(ymax, ymax_gt)
 
-        if left < right and top < bottom:
-            intersection = (right - left) * (bottom - top)
-        else:
-            intersection = 0
-        score += intersection / (pred_area + gt_area - intersection) * 1.0
+            if left < right and top < bottom:
+                intersection = (right - left) * (bottom - top)
+            else:
+                intersection = 0
+            iou = intersection / (pred_area + gt_area - intersection) * 1.0
+            score += iou
 
-        # More score if the center of the bbox is located at the center of the image (currently use gt bbox)
-        center_gt = (xmax_gt + xmin_gt) / 2, (ymax_gt + ymin_gt) / 2
-        distance = np.sqrt((center_gt[0] - self.center_image[1]) ** 2 + (center_gt[1] - self.center_image[0]) ** 2)
-        lower_bound = min(self.center_image) / 4
-        upper_bound = min(self.center_image) / 2
-        if distance <= lower_bound:
-            score += 2
-        else:
-            score += 2 - (distance - lower_bound) / (upper_bound - lower_bound)
+            if iou > 0.6:
+                # More score if the center of the bbox is located at the center of the image (currently use gt bbox)
+                center_gt = (xmax_gt + xmin_gt) / 2, (ymax_gt + ymin_gt) / 2
+                distance = np.sqrt((center_gt[0] - self.center_image[1]) ** 2 + (center_gt[1] - self.center_image[0]) ** 2)
+                lower_bound = min(self.center_image) / 4
+                upper_bound = min(self.center_image) / 2
+                if distance <= lower_bound:
+                    score += 2
+                elif distance <= 2 * upper_bound:
+                    score += 2 - (distance - lower_bound) / (upper_bound - lower_bound)
 
         return score
