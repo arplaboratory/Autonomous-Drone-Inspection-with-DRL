@@ -24,7 +24,7 @@ class call_robot_srv:
         rospy.init_node('call_robot_server')
         if args.dummy:
             print('dummy')
-            s = rospy.Service('call_robot', CallRobot, handle_dummy)
+            s = rospy.Service('call_robot', CallRobot, self.handle_dummy)
         else:
             print('normal')
             self.bbox_gt = []
@@ -43,27 +43,30 @@ class call_robot_srv:
             rospy.Subscriber('/image_processor/output', BoundingBoxes, self.gt_callback)
     
     def handle_robot_call(self,req):
-        print("command: [%.2f, %.2f, %.2f, %.2f]\n filename: %s\ntopic: %s\nrobot: %s"%(req.x,req.y, req.z, req.yaw, req.filename, req.topic, req.robot))
+        #print("command: [%.2f, %.2f, %.2f, %.2f]\n filename: %s\ntopic: %s\nrobot: %s"%(req.x,req.y, req.z, req.yaw, req.filename, req.topic, req.robot))
+        print("command: [%.2f, %.2f, %.2f, %.2f]\n"%(req.x,req.y, req.z, req.yaw))
         # execute command
+        failed = False
         if not args.static:
             try:
-                print('before goto')
                 goto = rospy.ServiceProxy('/'+req.robot+'/'+'mav_services'+'/goTo', Vec4)
                 post = Vec4Request()
                 post.goal[0] = req.x
                 post.goal[1] = req.y
                 post.goal[2] = req.z
                 post.goal[3] = req.yaw
-                print('before real goto')
                 resp = goto(post)
-                print('before check reaching')
                 #print('go_relative sucess')
                 while not (self.linear_velocity < self.linear_thresh and self.angular_velocity < self.angular_thresh):
                     print('flying to the moon~')
-                print(resp.success)
+                print('goto success:', resp.success)
+                if not resp.success:
+                    return "False -1 -1 -1 -1 -1.0 -1 -1 -1 -1"
             except Exception:
+                failed=True
                 raise 
-                return "False -1 -1 -1 -1 -1.0 -1 -1 -1 -1"
+        if failed:
+            return "False -1 -1 -1 -1 -1.0 -1 -1 -1 -1"
         # save image
         try:
             cv2.imwrite(req.filename, self.img)
@@ -95,7 +98,7 @@ class call_robot_srv:
                     output[7] = tmp.ymin
                     output[8] = tmp.xmax
                     output[9] = tmp.ymax
-            print(output)
+            print('bbox: ', output)
             st = ''
             for item in output:
                 st+= str(item)+' '
