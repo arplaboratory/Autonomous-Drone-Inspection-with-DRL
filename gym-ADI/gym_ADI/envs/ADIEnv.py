@@ -152,7 +152,7 @@ class ADIEnv(Env):
 
     def get_score(self, detect):
 
-        xmin, ymin, xmax, ymax, prob, xmin_gt, ymin_gt, xmax_gt, ymax_gt = detect  # 640, 480
+        xmin, ymin, xmax, ymax, prob, xmin_gt, ymin_gt, xmax_gt, ymax_gt = map(float, detect)  # 640, 480
         score = 0
 
         # get no gt, return 0 reward (same score)
