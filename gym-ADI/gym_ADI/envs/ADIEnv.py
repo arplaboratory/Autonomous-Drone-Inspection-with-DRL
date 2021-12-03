@@ -152,7 +152,10 @@ class ADIEnv(Env):
 
     def get_score(self, detect):
 
-        xmin, ymin, xmax, ymax, prob, xmin_gt, ymin_gt, xmax_gt, ymax_gt = map(float, detect)  # 640, 480
+        xmin, ymin, xmax, ymax, prob, xmin_gt, ymin_gt, xmax_gt, ymax_gt = detect  # 640, 480
+        xmin, ymin, xmax, ymax, xmin_gt, ymin_gt, xmax_gt, ymax_gt = int(xmin), int(ymin), int(xmax), int(ymax), int(
+            xmin_gt), int(ymin_gt), int(xmax_gt), int(ymax_gt)
+        prob = float(prob)
         score = 0
 
         # get no gt, return 0 reward (same score)
@@ -186,6 +189,6 @@ class ADIEnv(Env):
         if distance <= lower_bound:
             score += 2
         else:
-            score += 2 - (distance - lower_bound)/(upper_bound - lower_bound)
+            score += 2 - (distance - lower_bound) / (upper_bound - lower_bound)
 
         return score
