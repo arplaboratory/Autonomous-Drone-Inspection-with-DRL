@@ -14,6 +14,7 @@ import cv2
 import numpy as np
 from cv_bridge import CvBridge
 from sensor_msgs.msg import CompressedImage
+from nav_msgs.msg import Odometry
 from darknet_ros_msgs.msg import BoundingBoxes, BoundingBox
 from call_robot.srv import CallRobot
 from call_robot.srv import Vec4, Vec4Request
@@ -30,36 +31,41 @@ class call_robot_srv:
             self.bbox_pred = []
             self.img = []
             self.img_header = []
+            self.odom = []
+            self.linear_velocity = 0.0
+            self.angular_velocity = 0.0
+            self.linear_thresh = args.lt
+            self.angular_thresh = args.at
             self.s = rospy.Service('call_robot', CallRobot, self.handle_robot_call)
+            rospy.Subscriber('/dragonfly12/odom', Odometry, self.odom_callback) 
             rospy.Subscriber('/hires/image_raw/compressed', CompressedImage, self.img_callback) 
-            rospy.Subscriber('/darknet_ros/bounding_boxes', BoundingBoxes, self.gt_callback)
-            rospy.Subscriber('/image_processor/output', BoundingBoxes, self.pred_callback)
+            rospy.Subscriber('/darknet_ros/bounding_boxes', BoundingBoxes, self.pred_callback)
+            rospy.Subscriber('/image_processor/output', BoundingBoxes, self.gt_callback)
     
     def handle_robot_call(self,req):
         print("command: [%.2f, %.2f, %.2f, %.2f]\n filename: %s\ntopic: %s\nrobot: %s"%(req.x,req.y, req.z, req.yaw, req.filename, req.topic, req.robot))
         # execute command
         if not args.static:
             try:
-                goto_relative = rospy.ServiceProxy('/'+req.robot+'/'+'mav_services'+'/goToRelative', Vec4)
+                print('before goto')
+                goto = rospy.ServiceProxy('/'+req.robot+'/'+'mav_services'+'/goTo', Vec4)
                 post = Vec4Request()
                 post.goal[0] = req.x
                 post.goal[1] = req.y
                 post.goal[2] = req.z
                 post.goal[3] = req.yaw
-                resp = goto_relative(post)
-            #print('go_relative sucess')
+                print('before real goto')
+                resp = goto(post)
+                print('before check reaching')
+                #print('go_relative sucess')
+                while not (self.linear_velocity < self.linear_thresh and self.angular_velocity < self.angular_thresh):
+                    print('flying to the moon~')
                 print(resp.success)
-            except:
-                return False
+            except Exception:
+                raise 
+                return "False -1 -1 -1 -1 -1.0 -1 -1 -1 -1"
         # save image
         try:
-            #bridge = CvBridge()
-            #msg = rospy.wait_for_message(req.topic, CompressedImage)
-            #img  = bridge.compressed_imgmsg_to_cv2(msg, "bgr8")
-            #img  = img[:,80:-80]
-            #img  = cv2.resize(img, (256,256), interpolation = cv2.INTER_AREA)
-            #msg_bbox_gt = rospy.wait_for_message('/darknet_ros/bounding_boxes', BoundingBoxes)
-            #msg_bbox_pred = rospy.wait_for_message('/image_processor/output', BoundingBoxes)
             cv2.imwrite(req.filename, self.img)
             #print('gt header: ', self.bbox_gt)
             #print('pred header: ',self.bbox_pred)
@@ -109,6 +115,12 @@ class call_robot_srv:
         self.bbox_gt = msg
     def pred_callback(self,msg):
         self.bbox_pred = msg
+    def odom_callback(self, msg):
+        self.odom = msg.twist.twist
+        self.linear_velocity = self.odom.linear.x * self.odom.linear.x + self.odom.linear.y * self.odom.linear.y + self.odom.linear.z + self.odom.linear.z
+        self.angular_velocity = self.odom.angular.x * self.odom.angular.x + self.odom.angular.y * self.odom.angular.y + self.odom.angular.z * self.odom.angular.z
+        #print(self.linear_velocity)
+        #print(self.angular_velocity)
     def img_callback(self,msg):
         bridge = CvBridge()
         self.img_header = msg.header
@@ -123,6 +135,8 @@ if __name__ == '__main__':
     CLI = argparse.ArgumentParser()
     CLI.add_argument("--dummy", action="store_true") 
     CLI.add_argument("--static", action="store_true") 
+    CLI.add_argument("--lt", type=float, default = 0.05) 
+    CLI.add_argument("--at", type=float, default = 0.05) 
     args = CLI.parse_args()
     service = call_robot_srv(args)
     rospy.spin()

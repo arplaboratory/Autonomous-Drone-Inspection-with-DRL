@@ -184,7 +184,7 @@ class Processor:
              pose.orientation.z, pose.orientation.w)
         )
 
-        img = bridge.compressed_imgmsg_to_cv2(img_msg, 'bgr8')  
+        # img = bridge.compressed_imgmsg_to_cv2(img_msg, 'bgr8')  
         # DragonFly4 hires camera use yuv422 encoding for faster recording
         # img = cv2.cvtColor(img, cv2.COLOR_YUV2BGR_Y422)  # yuv422 to BGR
 
@@ -194,7 +194,7 @@ class Processor:
         # DragonPro2/1 hires camera rotate image
         #img = cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
         
-        img_bbox = img.copy()
+        # img_bbox = img.copy()
         gt_objects = []
         dets = []
         dets_new = []
@@ -219,6 +219,7 @@ class Processor:
             # get corner
 
             # special treatment! xyz from points.xyz not match with blender axis
+
             xmin, xmax, ymin, ymax, zmin, zmax = object_size[i]
             corner = np.array([
                 (xmax, ymax, zmax, 1),
@@ -249,31 +250,32 @@ class Processor:
             # dets.append([center[0], center[1],
             #              (xmax-xmin), (ymax-ymin)])
             # draw center
-            cv2.circle(img_bbox, center, 1, (0, 255, 255), 4)
+            # cv2.circle(img_bbox, center, 1, (0, 255, 255), 4)
             # draw 3D bbox
-            cv2.line(img_bbox, corners[0], corners[4], object_color[i], 1)
-            cv2.line(img_bbox, corners[1], corners[5], object_color[i], 1)
-            cv2.line(img_bbox, corners[2], corners[6], object_color[i], 1)
-            cv2.line(img_bbox, corners[3], corners[7], object_color[i], 1)
-            cv2.line(img_bbox, corners[0], corners[2], object_color[i], 1)
-            cv2.line(img_bbox, corners[1], corners[3], object_color[i], 1)
-            cv2.line(img_bbox, corners[4], corners[6], object_color[i], 1)
-            cv2.line(img_bbox, corners[5], corners[7], object_color[i], 1)
-            cv2.line(img_bbox, corners[0], corners[1], object_color[i], 1)
-            cv2.line(img_bbox, corners[2], corners[3], object_color[i], 1)
-            cv2.line(img_bbox, corners[4], corners[5], object_color[i], 1)
-            cv2.line(img_bbox, corners[6], corners[7], object_color[i], 1)
+            # cv2.line(img_bbox, corners[0], corners[4], object_color[i], 1)
+            # cv2.line(img_bbox, corners[1], corners[5], object_color[i], 1)
+            # cv2.line(img_bbox, corners[2], corners[6], object_color[i], 1)
+            # cv2.line(img_bbox, corners[3], corners[7], object_color[i], 1)
+            # cv2.line(img_bbox, corners[0], corners[2], object_color[i], 1)
+            # cv2.line(img_bbox, corners[1], corners[3], object_color[i], 1)
+            # cv2.line(img_bbox, corners[4], corners[6], object_color[i], 1)
+            # cv2.line(img_bbox, corners[5], corners[7], object_color[i], 1)
+            # cv2.line(img_bbox, corners[0], corners[1], object_color[i], 1)
+            # cv2.line(img_bbox, corners[2], corners[3], object_color[i], 1)
+            # cv2.line(img_bbox, corners[4], corners[5], object_color[i], 1)
+            # cv2.line(img_bbox, corners[6], corners[7], object_color[i], 1)
 
             # draw 2D bbox
-            cv2.rectangle(
-                img_bbox,
-                (int(xmin),
-                int(ymin)),
-                (int(xmax),
-                int(ymax)),
-                object_color[i],
-                1
-            )
+            # cv2.rectangle(
+            #     img_bbox,
+            #     (int(xmin),
+            #     int(ymin)),
+            #     (int(xmax),
+            #     int(ymax)),
+            #     object_color[i],
+            #     1
+            # )
+
             # cv2.rectangle(
             #     img_bbox,
             #     (int(center[0]-0.5*(xmax-xmin)),
@@ -300,22 +302,22 @@ class Processor:
         #np.savez(self.data_root+'gt/'+str(self.img_count)+'.npz', ts=ts, pose=gt_objects, dets=dets)
         
         # save the raw and bbox image for vis
-        cv2.imwrite(self.data_root+'raw/'+str(self.img_count)+'.png', img)
-        cv2.imwrite(self.data_root+'bbox/' +
-                    str(self.img_count)+'.png', img_bbox)
+        #cv2.imwrite(self.data_root+'raw/'+str(self.img_count)+'.png', img)
+        #cv2.imwrite(self.data_root+'bbox/' +
+        #            str(self.img_count)+'.png', img_bbox)
         self.img_count = self.img_count + 1
 
-        self.pub_bbox.publish(bridge.cv2_to_imgmsg(img_bbox, encoding="bgr8"))
-        #print('publish')
+        # self.pub_bbox.publish(bridge.cv2_to_imgmsg(img_bbox, encoding="bgr8"))
+        # print('publish')
 
-        ps = PoseArray()
-        ps.header = img_msg.header
-        for i in range(obj_nums):
-            pose = Pose()
-            pose.position.x = dets[i][0]
-            pose.position.y = dets[i][1]
-            ps.poses.append(pose)
-        self.pub_center.publish(ps)
+        #ps = PoseArray()
+        #ps.header = img_msg.header
+        #for i in range(obj_nums):
+        #    pose = Pose()
+        #    pose.position.x = dets[i][0]
+        #    pose.position.y = dets[i][1]
+        #    ps.poses.append(pose)
+        #self.pub_center.publish(ps)
         bboxes = BoundingBoxes()
         bboxes.header = img_msg.header
         bboxes.header.frame_id = "groundtruth"
@@ -344,17 +346,17 @@ class Processor:
 
 
 if __name__ == '__main__':
-    bagname = sys.argv[-1]
-    data_root = './'+bagname+'/'
-    try:
-        os.mkdir(data_root)
-        os.mkdir(data_root+'raw')
-        os.mkdir(data_root+'bbox')
-        os.mkdir(data_root+'gt')
+    # bagname = sys.argv[-1]
+    # data_root = './'+bagname+'/'
+    # try:
+    #     os.mkdir(data_root)
+    #     os.mkdir(data_root+'raw')
+    #     os.mkdir(data_root+'bbox')
+    #     os.mkdir(data_root+'gt')
         # os.mkdir(data_root+'crop')
-    except:
-        pass
+    # except:
+    #     pass
 
     rospy.init_node("py_image_processor")
-    image_processor = Processor(data_root)
+    image_processor = Processor('.')
     rospy.spin()
