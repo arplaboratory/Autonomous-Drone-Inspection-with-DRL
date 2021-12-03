@@ -2,6 +2,8 @@ import argparse
 import os
 
 import gym
+import gym_ADI
+
 from stable_baselines3.common.callbacks import EvalCallback
 from stable_baselines3.common.utils import set_random_seed
 from stable_baselines3.sac import SAC
