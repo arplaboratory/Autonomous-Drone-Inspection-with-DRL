@@ -68,8 +68,11 @@ if __name__ == '__main__':
     if os.path.isfile('./buffer.pth'):
         model.load_replay_buffer('./buffer.pth')
 
-    model.learn(total_timesteps=opt.total_timesteps, callback=eval_callback)
-
-    # Save Replay Buffer
-    model.save('./logs/final_model.pth')
-    model.save_replay_buffer('./buffer.pth')
+    try:
+        model.learn(total_timesteps=opt.total_timesteps, callback=eval_callback)
+    except Exception:
+        raise Exception
+    finally:
+        # Save Replay Buffer
+        model.save('./logs/final_model.pth')
+        model.save_replay_buffer('./buffer.pth')
