@@ -165,7 +165,7 @@ class ADIEnv(Env):
 
         # get no gt, return 0 reward (same score)
         if xmin_gt == -1:
-            return 0
+            return self.current_score
 
         # If we get a bbox, score + 1
         if prob >= 0.4:
