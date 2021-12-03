@@ -155,6 +155,10 @@ class ADIEnv(Env):
         xmin, ymin, xmax, ymax, prob, xmin_gt, ymin_gt, xmax_gt, ymax_gt = detect  # 640, 480
         score = 0
 
+        # get no gt, return 0 reward (same score)
+        if xmin_gt == -1:
+            return self.current_score
+
         # If we get a bbox, score + 1
         if prob >= 0.4:
             score += 1
