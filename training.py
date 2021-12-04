@@ -7,7 +7,7 @@ import gym_ADI
 from stable_baselines3.common.callbacks import EvalCallback
 from stable_baselines3.common.utils import set_random_seed
 from stable_baselines3.sac import SAC
-
+from stable_baselines3.common.env_checker import check_env
 
 # Reference: https://stable-baselines3.readthedocs.io/en/master/guide/examples.html#multiprocessing-unleashing-the-power-of-vectorized-environments
 
@@ -59,6 +59,9 @@ if __name__ == '__main__':
         policy_name = 'CnnPolicy'
     else:
         raise KeyError
+        
+    # Check env
+    check_env(env)
 
     eval_callback = EvalCallback(env, best_model_save_path='./logs/',
                                  log_path='./logs/', eval_freq=1000,
