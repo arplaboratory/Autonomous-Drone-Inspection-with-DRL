@@ -60,16 +60,17 @@ class call_robot_srv:
                 if intersect_line_segment_aabbox((Vec3(self.odom.x, self.odom.y, self.odom.z), Vec3(req.x, req.y, req.z)), self.bbox):
                     print('intersect')
                     failed = 2
-                resp = goto(post)
-                #print('go_relative sucess')
-                while not (self.linear_velocity < self.linear_thresh and self.angular_velocity < self.angular_thresh):
-                    print('flying to the moon~')
-                print('goto success:', resp.success)
-                if not resp.success:
-                    return "False -1 -1 -1 -1 -1.0 -1 -1 -1 -1"
+                else:
+                    resp = goto(post)
+                    #print('go_relative sucess')
+                    while not (self.linear_velocity < self.linear_thresh and self.angular_velocity < self.angular_thresh):
+                        print('flying to the moon~')
+                    print('goto success:', resp.success)
+                    if not resp.success:
+                        return "False -1 -1 -1 -1 -1.0 -1 -1 -1 -1"
             except Exception:
                 failed=1
-                raise 
+                # raise 
         if failed == 1:
             return "False -1 -1 -1 -1 -1.0 -1 -1 -1 -1"
         elif failed == 2:
