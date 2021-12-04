@@ -40,6 +40,60 @@
   </node>
   <!--fkie_master_discovery end-->
 
+  <!--mocap_vicon start-->
+  <node pkg="mocap_vicon"
+    type="mocap_vicon_node"
+    name="vicon"
+    output="screen">
+    <param name="server_address" value="128.238.39.148"/>
+    <param name="frame_rate" value="100"/>
+    <param name="max_accel" value="10.0"/>
+    <param name="publish_tf" value="false"/>
+    <param name="fixed_frame_id" value="mocap"/>
+    <rosparam param="model_list">[]</rosparam>
+    <remap from="/vicon/DragonFly12/odom" to="/dragonfly12/odom"/>
+    <remap from="/vicon/DragonFly13/odom" to="/dragonfly13/odom"/>
+  </node>
+  <!--mocap_vicon end-->
+
+  <!--darknet_ros start-->
+  <!-- Console launch prefix -->
+  <arg name="launch_prefix" default=""/>
+
+  <!-- CompressedImage or Image -->
+  <arg name="yolo_compressed"		default="true"/>
+
+  <!-- Config and weights folder. -->
+  <arg name="yolo_weights_path"          default="$(find darknet_ros)/yolo_network_config/weights"/>
+  <arg name="yolo_config_path"           default="$(find darknet_ros)/yolo_network_config/cfg"/>
+  <arg name="yolo_data_path"             default="$(find darknet_ros)/data"/>
+
+  <!-- ROS and network parameter files -->
+  <arg name="ros_param_file"             default="$(find darknet_ros)/config/ros.yaml"/>
+  <arg name="network_param_file"         default="$(find darknet_ros)/config/drone.yaml"/>
+
+  <!-- Load parameters -->
+  <rosparam command="load" ns="darknet_ros" file="$(arg ros_param_file)"/>
+  <rosparam command="load" ns="darknet_ros" file="$(arg network_param_file)"/>
+
+  <!-- Decompressing image arring from network -->
+  <!--node name="detector_decompressor" pkg="image_transport" type="republish" args="compressed in:=/gaze/image_republish out:=/gaze/image_decompressed" /-->
+
+
+  <!-- Start darknet and ros wrapper -->
+  <node pkg="darknet_ros" type="darknet_ros" name="darknet_ros" output="screen" launch-prefix="$(arg launch_prefix)">
+    <param name="weights_path"          value="$(arg yolo_weights_path)" />
+    <param name="config_path"           value="$(arg yolo_config_path)" />
+    <param name="data_path"             value="$(arg yolo_data_path)" />
+  </node>
+
+  <node name="detector_compressor" pkg="image_transport" type="republish" args="raw in:=/darknet_ros/detection_image out:=/darknet_ros/detection_image_republish" />
+  <!--darknet end-->
+  <!--py_image_processor start-->
+  <node name="py_image_processor" pkg="py_image_processor" type="processor.py" />
+  <!--py_image_processor end-->
+
+
   <!--fkie_master_sync start-->
   <node name="master_sync" pkg="fkie_master_sync" type="master_sync">
     <!-- Performs resync after the host was offline: unregister and register again to avoid connection losses to python topic. These does not suppot reconnection! -->
@@ -101,58 +155,5 @@
     <param name="check_host" value="True" />
   </node>
   <!--fkie_master_sync end-->
-
-  <!--mocap_vicon start-->
-  <node pkg="mocap_vicon"
-    type="mocap_vicon_node"
-    name="vicon"
-    output="screen">
-    <param name="server_address" value="128.238.39.148"/>
-    <param name="frame_rate" value="100"/>
-    <param name="max_accel" value="10.0"/>
-    <param name="publish_tf" value="false"/>
-    <param name="fixed_frame_id" value="mocap"/>
-    <rosparam param="model_list">[]</rosparam>
-    <remap from="/vicon/DragonFly12/odom" to="/dragonfly12/odom"/>
-    <remap from="/vicon/DragonFly13/odom" to="/dragonfly13/odom"/>
-  </node>
-  <!--mocap_vicon end-->
-
-  <!--darknet_ros start-->
-  <!-- Console launch prefix -->
-  <arg name="launch_prefix" default=""/>
-
-  <!-- CompressedImage or Image -->
-  <arg name="yolo_compressed"		default="true"/>
-
-  <!-- Config and weights folder. -->
-  <arg name="yolo_weights_path"          default="$(find darknet_ros)/yolo_network_config/weights"/>
-  <arg name="yolo_config_path"           default="$(find darknet_ros)/yolo_network_config/cfg"/>
-  <arg name="yolo_data_path"             default="$(find darknet_ros)/data"/>
-
-  <!-- ROS and network parameter files -->
-  <arg name="ros_param_file"             default="$(find darknet_ros)/config/ros.yaml"/>
-  <arg name="network_param_file"         default="$(find darknet_ros)/config/drone.yaml"/>
-
-  <!-- Load parameters -->
-  <rosparam command="load" ns="darknet_ros" file="$(arg ros_param_file)"/>
-  <rosparam command="load" ns="darknet_ros" file="$(arg network_param_file)"/>
-
-  <!-- Decompressing image arring from network -->
-  <!--node name="detector_decompressor" pkg="image_transport" type="republish" args="compressed in:=/gaze/image_republish out:=/gaze/image_decompressed" /-->
-
-
-  <!-- Start darknet and ros wrapper -->
-  <node pkg="darknet_ros" type="darknet_ros" name="darknet_ros" output="screen" launch-prefix="$(arg launch_prefix)">
-    <param name="weights_path"          value="$(arg yolo_weights_path)" />
-    <param name="config_path"           value="$(arg yolo_config_path)" />
-    <param name="data_path"             value="$(arg yolo_data_path)" />
-  </node>
-
-  <node name="detector_compressor" pkg="image_transport" type="republish" args="raw in:=/darknet_ros/detection_image out:=/darknet_ros/detection_image_republish" />
-  <!--darknet end-->
-  <!--py_image_processor start-->
-  <node name="py_image_processor" pkg="py_image_processor" type="proocessor.py" />
-  <!--py_image_processor end-->
 
 </launch>

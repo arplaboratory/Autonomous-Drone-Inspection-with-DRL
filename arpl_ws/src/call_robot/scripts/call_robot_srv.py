@@ -1,10 +1,10 @@
 #!/usr/bin/python
 # use system python2
 # use the command line below before running this script
-# export ROS_MASTER_URI=http://128.238.39.130:11311
 # rosrun call_robot call_robot_srv.py
 # rosrun call_robot call_robot_srv.py --dummy
 # add --dummy to get black 256*256*3 image
+# add --static to get image without sending the actual goto command
 # rosservice call /call_robot "{x: 0.0, y: 0.0, z: -1.0, yaw: 0.0, filename: '/home/yang/image.png', topic: '/hires/image_raw/compressed', robot: 'dragonfly12'}"
 import rospy
 import argparse
@@ -18,7 +18,8 @@ from nav_msgs.msg import Odometry
 from darknet_ros_msgs.msg import BoundingBoxes, BoundingBox
 from call_robot.srv import CallRobot
 from call_robot.srv import Vec4, Vec4Request
-    
+
+from utils import *
 class call_robot_srv:
     def __init__(self,args):
         rospy.init_node('call_robot_server')
@@ -36,6 +37,7 @@ class call_robot_srv:
             self.angular_velocity = 0.0
             self.linear_thresh = args.lt
             self.angular_thresh = args.at
+            self.bbox = (Vec3(-0.45, -0.45, 0.0), Vec3(0.45, 0.45, 1.0))
             self.s = rospy.Service('call_robot', CallRobot, self.handle_robot_call)
             rospy.Subscriber('/dragonfly12/odom', Odometry, self.odom_callback) 
             rospy.Subscriber('/hires/image_raw/compressed', CompressedImage, self.img_callback) 
@@ -46,7 +48,7 @@ class call_robot_srv:
         #print("command: [%.2f, %.2f, %.2f, %.2f]\n filename: %s\ntopic: %s\nrobot: %s"%(req.x,req.y, req.z, req.yaw, req.filename, req.topic, req.robot))
         print("command: [%.2f, %.2f, %.2f, %.2f]\n"%(req.x,req.y, req.z, req.yaw))
         # execute command
-        failed = False
+        failed = 0
         if not args.static:
             try:
                 goto = rospy.ServiceProxy('/'+req.robot+'/'+'mav_services'+'/goTo', Vec4)
@@ -55,6 +57,9 @@ class call_robot_srv:
                 post.goal[1] = req.y
                 post.goal[2] = req.z
                 post.goal[3] = req.yaw
+                if intersect_line_segment_aabbox((Vec3(self.odom.x, self.odom.y, self.odom.z), Vec3(req.x, req.y, req.z)), self.bbox):
+                    print('intersect')
+                    failed = 2
                 resp = goto(post)
                 #print('go_relative sucess')
                 while not (self.linear_velocity < self.linear_thresh and self.angular_velocity < self.angular_thresh):
@@ -63,10 +68,12 @@ class call_robot_srv:
                 if not resp.success:
                     return "False -1 -1 -1 -1 -1.0 -1 -1 -1 -1"
             except Exception:
-                failed=True
+                failed=1
                 raise 
-        if failed:
+        if failed == 1:
             return "False -1 -1 -1 -1 -1.0 -1 -1 -1 -1"
+        elif failed == 2:
+            return "Bump -1 -1 -1 -1 -1.0 -1 -1 -1 -1"
         # save image
         try:
             cv2.imwrite(req.filename, self.img)
@@ -113,6 +120,8 @@ class call_robot_srv:
             return True
         except:
             return False
+       
+
 
     def gt_callback(self,msg):
         self.bbox_gt = msg
