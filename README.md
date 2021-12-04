@@ -74,3 +74,18 @@ rosrun call_robot call_robot_srv.py --lt 0.008 --at 0.008
 ```bash
 rosservice call /call_robot "{x: 0.0, y: 0.0, z: -1.0, yaw: 0.0, filename: '/home/$USER/image.png', topic: '/hires/image_raw/compressed', robot: 'dragonfly12'}"
 ```
+
+## RL Platform
+### Environment Setup
+```
+conda env create -f env.yaml
+cd gym-ADI
+pip install -e .
+cd ..
+```
+### Training
+```
+# First run this command, then take off
+python training.py
+# To stop, just ctrl + c for once
+```
