@@ -69,8 +69,8 @@ class call_robot_srv:
                             return "GoToFailed -1 -1 -1 -1 -1.0 -1 -1 -1 -1"
                         
                 #print('after intersect detection')
-            except Exception:
-                print(Exception)
+            except Exception as e:
+                print(e)
                 failed=1
         if failed == 1:
             return "GoToException -1 -1 -1 -1 -1.0 -1 -1 -1 -1"
@@ -112,8 +112,8 @@ class call_robot_srv:
             for item in output:
                 st+= str(item)+' '
             return st
-        except Exception:
-            #raise
+        except Exception as e:
+            print(e)
             return "ImageException -1 -1 -1 -1 -1.0 -1 -1 -1 -1"
     def handle_dummy(req):
         print("command: [%.2f, %.2f, %.2f, %.2f]\n filename: %s\ntopic: %s\nrobot: %s"%(req.x,req.y, req.z, req.yaw, req.filename, req.topic, req.robot))
