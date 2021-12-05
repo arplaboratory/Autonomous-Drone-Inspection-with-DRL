@@ -22,7 +22,7 @@ def make_env(env_id, rank, seed, radius, z_0, max_step, obs_size):
     """
 
     def _init():
-        env = gym.make(env_id, rank=rank, radius=radius, z_0=z_0, max_step=max_step, obs_size=obs_size)
+        env = gym.make(env_id, seed=seed, rank=rank, radius=radius, z_0=z_0, max_step=max_step, obs_size=obs_size)
         env.seed(seed + rank)
         return env
 
