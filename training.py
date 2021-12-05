@@ -38,8 +38,8 @@ if __name__ == '__main__':
     parser.add_argument('-global_seed', type=int, default=1)
     parser.add_argument('-max_envs_num', type=int, default=1)
     parser.add_argument('-batch_size', type=int, default=64)
-    parser.add_argument('-r_max', type=float, default=1.0)  # -1.0 means we only allow run on a sphere
-    parser.add_argument('-r_min', type=float, default=0.7)
+    parser.add_argument('-r_max', type=float, default=1.2)  # -1.0 means we only allow run on a sphere
+    parser.add_argument('-r_min', type=float, default=0.8)
     parser.add_argument('-z_0', type=float, default=0.35)
     parser.add_argument('-max_step', type=int, default=5)
     parser.add_argument('-obs_size', type=int, default=256)
