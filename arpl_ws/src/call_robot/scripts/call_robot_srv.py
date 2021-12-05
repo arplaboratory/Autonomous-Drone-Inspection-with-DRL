@@ -18,6 +18,7 @@ from call_robot.srv import CallRobot
 from call_robot.srv import Vec4, Vec4Request
 
 from utils import *
+import time
 class call_robot_srv:
     def __init__(self,args):
         rospy.init_node('call_robot_server')
@@ -30,7 +31,8 @@ class call_robot_srv:
         self.angular_velocity = 0.0
         self.linear_thresh = args.lt
         self.angular_thresh = args.at
-        self.bbox = (Vec3(-0.45, -0.45, 0.0), Vec3(0.45, 0.45, 1.0))
+        #self.bbox = (Vec3(-0.45, -0.45, 0.0), Vec3(0.45, 0.45, 1.0))
+        self.bbox = (Vec3(-0.40, -0.40, 0.0), Vec3(0.40, 0.40, 0.9))
         #self.bbox = (Vec3(-0.2, -0.2, 0.0), Vec3(0.2, 0.2, 0.5))
         self.s = rospy.Service('call_robot', CallRobot, self.handle_robot_call)
         rospy.Subscriber('/dragonfly12/odom', Odometry, self.odom_callback) 
@@ -51,24 +53,17 @@ class call_robot_srv:
                 post.goal[1] = req.y
                 post.goal[2] = req.z
                 post.goal[3] = req.yaw
-                #print('before intersect detection')
                 if intersect_line_segment_aabbox((Vec3(self.odom.pose.pose.position.x, self.odom.pose.pose.position.y, self.odom.pose.pose.position.z), Vec3(req.x, req.y, req.z)), self.bbox, debug=False):
-                    print('intersect')
+                    #print('intersect')
                     failed = 2
                 else:
-                    print('no intersect')
-                    resp = goto(post)
-                    #print('go_relative sucess')
-                    if resp.success:
-                        while not (self.linear_velocity < self.linear_thresh and self.angular_velocity < self.angular_thresh):
-                            pass
-                        #print('goto sucessed')
-                    else:
-                        #print('goto failed')
-                        if not resp.success:
-                            return "GoToFailed -1 -1 -1 -1 -1.0 -1 -1 -1 -1"
-                        
-                #print('after intersect detection')
+                    #print('no intersect')
+                    resp = goto(post)            
+                    time.sleep(1)
+                    while not (self.linear_velocity < self.linear_thresh and self.angular_velocity < self.angular_thresh):
+                        pass
+                    if not resp.success:
+                        return "GoToFailed -1 -1 -1 -1 -1.0 -1 -1 -1 -1"
             except Exception as e:
                 print(e)
                 failed=1
@@ -133,15 +128,12 @@ class call_robot_srv:
         self.odom = msg
         self.linear_velocity = msg.twist.twist.linear.x * msg.twist.twist.linear.x + msg.twist.twist.linear.y * msg.twist.twist.linear.y + msg.twist.twist.linear.z + msg.twist.twist.linear.z
         self.angular_velocity = msg.twist.twist.angular.x * msg.twist.twist.angular.x + msg.twist.twist.angular.y * msg.twist.twist.angular.y + msg.twist.twist.angular.z * msg.twist.twist.angular.z
-        #print(self.linear_velocity)
-        #print(self.angular_velocity)
     def img_callback(self,msg):
         bridge = CvBridge()
         self.img_header = msg.header
         self.img = bridge.compressed_imgmsg_to_cv2(msg,"bgr8")
         #img = img[:, 80:-80]
         #self.img = cv2.resize(self.img, (256, 256), interpolation = cv2.INTER_AREA)
-
 
 if __name__ == '__main__':
     # parse arguments
