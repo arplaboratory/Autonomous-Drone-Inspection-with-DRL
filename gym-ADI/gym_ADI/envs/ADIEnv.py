@@ -12,7 +12,7 @@ class ADIEnv(Env):
     def __init__(self, seed=0, rank=0, radius=None, z_0=0.35, obs_size=None, max_step=5):
         super().__init__()
         if radius is None:
-            radius = [0.7, -1.0]  # r_min, r_max
+            radius = [0.8, -1.0]  # r_min, r_max
         self.image_size = [480, 640]  # H, W
         if obs_size is None:
             self.obs_size = self.image_size
@@ -21,8 +21,8 @@ class ADIEnv(Env):
         else:
             self.obs_size = obs_size
 
-        random.seed(0)
-        np.random.seed(0)
+        random.seed(seed)
+        np.random.seed(seed)
 
         self.radius = radius
         self.rank = rank
@@ -48,23 +48,26 @@ class ADIEnv(Env):
         self.z_0 = z_0
         self.center_image = self.image_size[0] // 2, self.image_size[1] // 2  # Y, X
         self.current_step = 0
-        self.current_polar_position = self.radius[1], 0, 0  # r, phi, theta
+        self.current_polar_position = self.radius[1], np.pi, np.pi/2  # r, phi, theta
         self.current_score = 0
         self.action_safe = True
 
     def step(self, action):
-        obs, detect = self.get_image_detect_after_action(action)
+        obs, detect, bump_done = self.get_image_detect_after_action(action)
 
-        score = self.get_score(detect)
-        reward = score  # reward = diff or score
-        self.current_score = score
+        score1, score2, score3, score4 = self.get_score(detect)
+        reward = score1 + score2 + score3 + score4  # reward = diff or score
+        self.current_score = reward
 
         self.current_step += 1
         if self.current_step < self.max_step:
-            done = False
+            if bump_done is True:
+                done = True
+            else:
+                done = False
         else:
             done = True
-        info = {'reward': reward, 'score': self.current_score, 'polar': self.current_polar_position, 'safe': self.action_safe}
+        info = {'reward': reward, 'score': [score1, score2, score3, score4], 'polar': self.current_polar_position, 'safe': self.action_safe}
         print(info)
         return obs, reward, done, info
 
@@ -78,12 +81,12 @@ class ADIEnv(Env):
     def reset(self):
 
         # init
-        self.current_polar_position = self.radius[1], random.random()*np.pi*2, random.random()*np.pi/4 + np.pi/4  # r, phi, theta
+        # self.current_polar_position = self.radius[1], random.random()*np.pi*2, random.random()*np.pi/4 + np.pi/4  # r, phi, theta
         self.current_score = 0
 
-        obs, detect = self.get_image_detect_after_action()
-        score = self.get_score(detect)
-        self.current_score = score
+        obs, detect, done = self.get_image_detect_after_action()
+        score1, score2, score3, score4 = self.get_score(detect)
+        self.current_score = score1 + score2 + score3 + score4
         self.current_step = 0
         return obs
 
@@ -92,20 +95,37 @@ class ADIEnv(Env):
         image = None
         detect = None  # xmin ymin xmax ymax probability(detector) xmin ymin xmax ymax(vicon)
         self.action_safe = True
+        done = False
 
         while image is None:
             if action is not None:
                 self.current_polar_position = self.get_new_position(action)  # action is delta r, delta phi and delta theta
-            elif self.action_safe is False:
-                # Unsafe reset, random again
+            else:
+                # reset, first goto 0,0,2, then random again
+                while True:
+                    try:
+                        output_raw = None
+                        process = subprocess.run(self.ros_pattern.format(x=0.0, y=0.0, z=2.0, yaw=0.0, filename=self.filename), shell=True, capture_output=True, timeout=10)
+                        output_raw = process.stdout.decode("utf-8")
+                        output = output_raw.split()
+                        success = output[1][1:]   # raw string is "True
+                        if success == "True":
+                            break
+                        else:
+                            raise KeyError(process.stdout)
+                    except Exception:
+                        if output_raw is not None:
+                            print(f'Error resetting: {output_raw}')
+                        else:
+                            print(f'Errpr resetting: Time out')
                 self.current_polar_position = self.radius[1], random.random()*np.pi*2, random.random()*np.pi/4 + np.pi/4  # r, phi, theta
-                self.action_safe = True
             x, y, z, yaw = self.polar_to_cart(self.current_polar_position)
             while current_retry < self.max_retry_time:
                 try:
+                    output_raw = None
                     process = subprocess.run(
                         self.ros_pattern.format(x=x, y=y, z=z, yaw=yaw, filename=self.filename), shell=True,
-                        capture_output=True)
+                        capture_output=True, timeout=10)
                     output_raw = process.stdout.decode("utf-8")
                     output = output_raw.split()
                     success = output[1][1:]   # raw string is "True
@@ -114,28 +134,27 @@ class ADIEnv(Env):
                         detect = output[2:-1]
                         break
                     elif success == 'Bump':
+                        image = Image.open(self.filename)
+                        detect = output[2:-1]
                         self.action_safe = False
                         if action is not None:
                             done = True  # done if not resetting
-                        current_retry = self.max_retry_time  # finish inner loop right now
-                        raise KeyError(process.stdout)
+                        break
                     else:
                         raise KeyError(process.stdout)
                 except Exception:
-                    print(f'Error: {output_raw}')
+                    if output_raw is not None:
+                        print(f'Error: {output_raw}')
+                    else:
+                        print(f'Error: Timeout')
                     current_retry += 1
             if image is None:
                 current_retry = 0
-                if self.action_safe is True:
-                    print(f'Sleep 10s: Cannot get the image after {self.max_retry_time} retries.')
-                    time.sleep(10.0)
-                else:
-                    print(f'Bump: Directly reset.')
+                print(f'Sleep 10s: Cannot get the image after {self.max_retry_time} retries.')
 
         # resize image
         image = image.resize(tuple(self.obs_size))
-
-        return np.array(image), detect
+        return np.array(image), detect, done
 
     def polar_to_cart(self, polar_position):
         r, phi, theta = polar_position
@@ -181,23 +200,23 @@ class ADIEnv(Env):
 
     def get_score(self, detect):
 
+        print(detect)
+
+        if self.action_safe is False: 
+            return 0, 0, 0, 0
+
         xmin, ymin, xmax, ymax, prob, xmin_gt, ymin_gt, xmax_gt, ymax_gt = detect  # 640, 480
         xmin, ymin, xmax, ymax, xmin_gt, ymin_gt, xmax_gt, ymax_gt = int(xmin), int(ymin), int(xmax), int(ymax), int(
             xmin_gt), int(ymin_gt), int(xmax_gt), int(ymax_gt)
         prob = float(prob)
 
-        # Safe action
-
-        if self.action_safe is False:
-            score = 0
-            return score
-        else:
-            score = 1
-
-        # If we get a bbox, score + prob
+        score1 = 1
+        score2 = 0
+        score3 = 0
+        score4 = 0
 
         if prob >= 0.4:
-            score += prob
+            score2 = prob
 
             # The second part is iou of pred and gt if we get a bbox
             pred_area = (xmax - xmin) * (ymax - ymin)
@@ -213,7 +232,7 @@ class ADIEnv(Env):
             else:
                 intersection = 0
             iou = intersection / (pred_area + gt_area - intersection + 1e-8)
-            score += iou
+            score3 = iou
 
             if iou > 0.6:
                 # More score if the center of the bbox is located at the center of the image (currently use gt bbox)
@@ -222,8 +241,8 @@ class ADIEnv(Env):
                 lower_bound = min(self.center_image) / 4
                 upper_bound = min(self.center_image) / 2
                 if distance <= lower_bound:
-                    score += 2
+                    score4 = 2
                 elif distance <= 2 * upper_bound:
-                    score += 2 - (distance - lower_bound) / (upper_bound - lower_bound)
+                    score4 = 2 - (distance - lower_bound) / (upper_bound - lower_bound)
 
-        return score
+        return score1, score2, score3, score4
