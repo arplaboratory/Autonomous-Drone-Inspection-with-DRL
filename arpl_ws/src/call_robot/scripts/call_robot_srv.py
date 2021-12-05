@@ -2,8 +2,6 @@
 # use system python2
 # use the command line below before running this script
 # rosrun call_robot call_robot_srv.py
-# rosrun call_robot call_robot_srv.py --dummy
-# add --dummy to get black 256*256*3 image
 # add --static to get image without sending the actual goto command
 # rosservice call /call_robot "{x: 0.0, y: 0.0, z: -1.0, yaw: 0.0, filename: '/home/yang/image.png', topic: '/hires/image_raw/compressed', robot: 'dragonfly12'}"
 import rospy
@@ -23,30 +21,26 @@ from utils import *
 class call_robot_srv:
     def __init__(self,args):
         rospy.init_node('call_robot_server')
-        if args.dummy:
-            print('dummy')
-            s = rospy.Service('call_robot', CallRobot, self.handle_dummy)
-        else:
-            print('normal')
-            self.bbox_gt = []
-            self.bbox_pred = []
-            self.img = []
-            self.img_header = []
-            self.odom = []
-            self.linear_velocity = 0.0
-            self.angular_velocity = 0.0
-            self.linear_thresh = args.lt
-            self.angular_thresh = args.at
-            self.bbox = (Vec3(-0.45, -0.45, 0.0), Vec3(0.45, 0.45, 1.0))
-            self.s = rospy.Service('call_robot', CallRobot, self.handle_robot_call)
-            rospy.Subscriber('/dragonfly12/odom', Odometry, self.odom_callback) 
-            rospy.Subscriber('/hires/image_raw/compressed', CompressedImage, self.img_callback) 
-            rospy.Subscriber('/darknet_ros/bounding_boxes', BoundingBoxes, self.pred_callback)
-            rospy.Subscriber('/image_processor/output', BoundingBoxes, self.gt_callback)
+        self.bbox_gt = []
+        self.bbox_pred = BoundingBoxes()
+        self.img = []
+        self.img_header = []
+        self.odom = []
+        self.linear_velocity = 0.0
+        self.angular_velocity = 0.0
+        self.linear_thresh = args.lt
+        self.angular_thresh = args.at
+        self.bbox = (Vec3(-0.45, -0.45, 0.0), Vec3(0.45, 0.45, 1.0))
+        #self.bbox = (Vec3(-0.2, -0.2, 0.0), Vec3(0.2, 0.2, 0.5))
+        self.s = rospy.Service('call_robot', CallRobot, self.handle_robot_call)
+        rospy.Subscriber('/dragonfly12/odom', Odometry, self.odom_callback) 
+        rospy.Subscriber('/hires/image_raw/compressed', CompressedImage, self.img_callback) 
+        rospy.Subscriber('/darknet_ros/bounding_boxes', BoundingBoxes, self.pred_callback)
+        rospy.Subscriber('/image_processor/output', BoundingBoxes, self.gt_callback)
     
     def handle_robot_call(self,req):
-        #print("command: [%.2f, %.2f, %.2f, %.2f]\n filename: %s\ntopic: %s\nrobot: %s"%(req.x,req.y, req.z, req.yaw, req.filename, req.topic, req.robot))
-        print("command: [%.2f, %.2f, %.2f, %.2f]\n"%(req.x,req.y, req.z, req.yaw))
+        #print("command: [%.2f, %.2f, %.2f, %.2f]\n filename: %s topic: %s robot: %s"%(req.x,req.y, req.z, req.yaw, req.filename, req.topic, req.robot))
+        print("--------------------------\ncommand: [%.2f, %.2f, %.2f, %.2f]"%(req.x,req.y, req.z, req.yaw))
         # execute command
         failed = 0
         if not args.static:
@@ -57,22 +51,29 @@ class call_robot_srv:
                 post.goal[1] = req.y
                 post.goal[2] = req.z
                 post.goal[3] = req.yaw
-                if intersect_line_segment_aabbox((Vec3(self.odom.x, self.odom.y, self.odom.z), Vec3(req.x, req.y, req.z)), self.bbox):
+                #print('before intersect detection')
+                if intersect_line_segment_aabbox((Vec3(self.odom.pose.pose.position.x, self.odom.pose.pose.position.y, self.odom.pose.pose.position.z), Vec3(req.x, req.y, req.z)), self.bbox, debug=False):
                     print('intersect')
                     failed = 2
                 else:
+                    print('no intersect')
                     resp = goto(post)
                     #print('go_relative sucess')
-                    while not (self.linear_velocity < self.linear_thresh and self.angular_velocity < self.angular_thresh):
-                        print('flying to the moon~')
-                    print('goto success:', resp.success)
-                    if not resp.success:
-                        return "False -1 -1 -1 -1 -1.0 -1 -1 -1 -1"
+                    if resp.success:
+                        while not (self.linear_velocity < self.linear_thresh and self.angular_velocity < self.angular_thresh):
+                            pass
+                        #print('goto sucessed')
+                    else:
+                        #print('goto failed')
+                        if not resp.success:
+                            return "GoToFailed -1 -1 -1 -1 -1.0 -1 -1 -1 -1"
+                        
+                #print('after intersect detection')
             except Exception:
+                print(Exception)
                 failed=1
-                # raise 
         if failed == 1:
-            return "False -1 -1 -1 -1 -1.0 -1 -1 -1 -1"
+            return "GoToException -1 -1 -1 -1 -1.0 -1 -1 -1 -1"
         elif failed == 2:
             return "Bump -1 -1 -1 -1 -1.0 -1 -1 -1 -1"
         # save image
@@ -111,8 +112,9 @@ class call_robot_srv:
             for item in output:
                 st+= str(item)+' '
             return st
-        except:
-            return "False -1 -1 -1 -1 -1.0 -1 -1 -1 -1"
+        except Exception:
+            #raise
+            return "ImageException -1 -1 -1 -1 -1.0 -1 -1 -1 -1"
     def handle_dummy(req):
         print("command: [%.2f, %.2f, %.2f, %.2f]\n filename: %s\ntopic: %s\nrobot: %s"%(req.x,req.y, req.z, req.yaw, req.filename, req.topic, req.robot))
         x = np.zeros((256,265,3),np.uint8)
@@ -121,17 +123,16 @@ class call_robot_srv:
             return True
         except:
             return False
-       
-
 
     def gt_callback(self,msg):
         self.bbox_gt = msg
     def pred_callback(self,msg):
         self.bbox_pred = msg
+        #print('pred received')
     def odom_callback(self, msg):
-        self.odom = msg.twist.twist
-        self.linear_velocity = self.odom.linear.x * self.odom.linear.x + self.odom.linear.y * self.odom.linear.y + self.odom.linear.z + self.odom.linear.z
-        self.angular_velocity = self.odom.angular.x * self.odom.angular.x + self.odom.angular.y * self.odom.angular.y + self.odom.angular.z * self.odom.angular.z
+        self.odom = msg
+        self.linear_velocity = msg.twist.twist.linear.x * msg.twist.twist.linear.x + msg.twist.twist.linear.y * msg.twist.twist.linear.y + msg.twist.twist.linear.z + msg.twist.twist.linear.z
+        self.angular_velocity = msg.twist.twist.angular.x * msg.twist.twist.angular.x + msg.twist.twist.angular.y * msg.twist.twist.angular.y + msg.twist.twist.angular.z * msg.twist.twist.angular.z
         #print(self.linear_velocity)
         #print(self.angular_velocity)
     def img_callback(self,msg):
@@ -143,10 +144,8 @@ class call_robot_srv:
 
 
 if __name__ == '__main__':
-    
     # parse arguments
     CLI = argparse.ArgumentParser()
-    CLI.add_argument("--dummy", action="store_true") 
     CLI.add_argument("--static", action="store_true") 
     CLI.add_argument("--lt", type=float, default = 0.008) 
     CLI.add_argument("--at", type=float, default = 0.008) 

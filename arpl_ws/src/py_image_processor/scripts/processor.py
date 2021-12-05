@@ -184,7 +184,7 @@ class Processor:
              pose.orientation.z, pose.orientation.w)
         )
 
-        # img = bridge.compressed_imgmsg_to_cv2(img_msg, 'bgr8')  
+        img_bbox = bridge.compressed_imgmsg_to_cv2(img_msg, 'bgr8')  
         # DragonFly4 hires camera use yuv422 encoding for faster recording
         # img = cv2.cvtColor(img, cv2.COLOR_YUV2BGR_Y422)  # yuv422 to BGR
 
@@ -194,7 +194,7 @@ class Processor:
         # DragonPro2/1 hires camera rotate image
         #img = cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
         
-        # img_bbox = img.copy()
+        #img_bbox = img.copy()
         gt_objects = []
         dets = []
         dets_new = []
@@ -249,33 +249,34 @@ class Processor:
             dets_new.append([ xmin, ymin, xmax, ymax])
             # dets.append([center[0], center[1],
             #              (xmax-xmin), (ymax-ymin)])
+            ########################################################################
             # draw center
-            # cv2.circle(img_bbox, center, 1, (0, 255, 255), 4)
+            cv2.circle(img_bbox, center, 1, (0, 255, 255), 4)
             # draw 3D bbox
-            # cv2.line(img_bbox, corners[0], corners[4], object_color[i], 1)
-            # cv2.line(img_bbox, corners[1], corners[5], object_color[i], 1)
-            # cv2.line(img_bbox, corners[2], corners[6], object_color[i], 1)
-            # cv2.line(img_bbox, corners[3], corners[7], object_color[i], 1)
-            # cv2.line(img_bbox, corners[0], corners[2], object_color[i], 1)
-            # cv2.line(img_bbox, corners[1], corners[3], object_color[i], 1)
-            # cv2.line(img_bbox, corners[4], corners[6], object_color[i], 1)
-            # cv2.line(img_bbox, corners[5], corners[7], object_color[i], 1)
-            # cv2.line(img_bbox, corners[0], corners[1], object_color[i], 1)
-            # cv2.line(img_bbox, corners[2], corners[3], object_color[i], 1)
-            # cv2.line(img_bbox, corners[4], corners[5], object_color[i], 1)
-            # cv2.line(img_bbox, corners[6], corners[7], object_color[i], 1)
+            cv2.line(img_bbox, corners[0], corners[4], object_color[i], 1)
+            cv2.line(img_bbox, corners[1], corners[5], object_color[i], 1)
+            cv2.line(img_bbox, corners[2], corners[6], object_color[i], 1)
+            cv2.line(img_bbox, corners[3], corners[7], object_color[i], 1)
+            cv2.line(img_bbox, corners[0], corners[2], object_color[i], 1)
+            cv2.line(img_bbox, corners[1], corners[3], object_color[i], 1)
+            cv2.line(img_bbox, corners[4], corners[6], object_color[i], 1)
+            cv2.line(img_bbox, corners[5], corners[7], object_color[i], 1)
+            cv2.line(img_bbox, corners[0], corners[1], object_color[i], 1)
+            cv2.line(img_bbox, corners[2], corners[3], object_color[i], 1)
+            cv2.line(img_bbox, corners[4], corners[5], object_color[i], 1)
+            cv2.line(img_bbox, corners[6], corners[7], object_color[i], 1)
 
             # draw 2D bbox
-            # cv2.rectangle(
-            #     img_bbox,
-            #     (int(xmin),
-            #     int(ymin)),
-            #     (int(xmax),
-            #     int(ymax)),
-            #     object_color[i],
-            #     1
-            # )
-
+            cv2.rectangle(
+                img_bbox,
+                (int(xmin),
+                int(ymin)),
+                (int(xmax),
+                int(ymax)),
+                object_color[i],
+                1
+            )
+            ###################################################
             # cv2.rectangle(
             #     img_bbox,
             #     (int(center[0]-0.5*(xmax-xmin)),
@@ -307,7 +308,7 @@ class Processor:
         #            str(self.img_count)+'.png', img_bbox)
         self.img_count = self.img_count + 1
 
-        # self.pub_bbox.publish(bridge.cv2_to_imgmsg(img_bbox, encoding="bgr8"))
+        self.pub_bbox.publish(bridge.cv2_to_imgmsg(img_bbox, encoding="bgr8"))
         # print('publish')
 
         #ps = PoseArray()
