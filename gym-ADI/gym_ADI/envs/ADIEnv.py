@@ -9,7 +9,7 @@ from gym.spaces import Box
 import random
 
 class ADIEnv(Env):
-    def __init__(self, rank=0, radius=None, z_0=0.35, obs_size=None, max_step=5):
+    def __init__(self, seed=0, rank=0, radius=None, z_0=0.35, obs_size=None, max_step=5):
         super().__init__()
         if radius is None:
             radius = [0.7, -1.0]  # r_min, r_max
@@ -22,6 +22,8 @@ class ADIEnv(Env):
             self.obs_size = obs_size
 
         random.seed(0)
+        np.random.seed(0)
+
         self.radius = radius
         self.rank = rank
         if self.radius[1] == -1.0:
@@ -62,7 +64,7 @@ class ADIEnv(Env):
             done = False
         else:
             done = True
-        info = {'reward': reward, 'score': self.current_score, 'polar': self.current_polar_position}
+        info = {'reward': reward, 'score': self.current_score, 'polar': self.current_polar_position, 'safe': self.action_safe}
         print(info)
         return obs, reward, done, info
 
@@ -97,6 +99,7 @@ class ADIEnv(Env):
             elif self.action_safe is False:
                 # Unsafe reset, random again
                 self.current_polar_position = self.radius[1], random.random()*np.pi*2, random.random()*np.pi/4 + np.pi/4  # r, phi, theta
+                self.action_safe = True
             x, y, z, yaw = self.polar_to_cart(self.current_polar_position)
             while current_retry < self.max_retry_time:
                 try:
@@ -113,7 +116,7 @@ class ADIEnv(Env):
                     elif success == 'Bump':
                         self.action_safe = False
                         if action is not None:
-                            action = self.action_space.sample()  # resample action if not resetting
+                            done = True  # done if not resetting
                         current_retry = self.max_retry_time  # finish inner loop right now
                         raise KeyError(process.stdout)
                     else:
@@ -123,8 +126,11 @@ class ADIEnv(Env):
                     current_retry += 1
             if image is None:
                 current_retry = 0
-                print(f'Sleep 10s: Cannot get the image after {self.max_retry_time} retries.')
-                time.sleep(10.0)
+                if self.action_safe is True:
+                    print(f'Sleep 10s: Cannot get the image after {self.max_retry_time} retries.')
+                    time.sleep(10.0)
+                else:
+                    print(f'Bump: Directly reset.')
 
         # resize image
         image = image.resize(tuple(self.obs_size))
