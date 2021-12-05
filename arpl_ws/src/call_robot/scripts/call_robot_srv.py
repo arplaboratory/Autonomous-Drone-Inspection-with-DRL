@@ -35,10 +35,10 @@ class call_robot_srv:
         self.bbox = (Vec3(-0.40, -0.40, 0.0), Vec3(0.40, 0.40, 0.9))
         #self.bbox = (Vec3(-0.2, -0.2, 0.0), Vec3(0.2, 0.2, 0.5))
         self.s = rospy.Service('call_robot', CallRobot, self.handle_robot_call)
-        rospy.Subscriber('/dragonfly12/odom', Odometry, self.odom_callback) 
-        rospy.Subscriber('/hires/image_raw/compressed', CompressedImage, self.img_callback) 
-        rospy.Subscriber('/darknet_ros/bounding_boxes', BoundingBoxes, self.pred_callback)
-        rospy.Subscriber('/image_processor/output', BoundingBoxes, self.gt_callback)
+        rospy.Subscriber('/dragonfly12/odom', Odometry, self.odom_callback, queue_size = 1) 
+        rospy.Subscriber('/hires/image_raw/compressed', CompressedImage, self.img_callback, queue_size  =1) 
+        rospy.Subscriber('/darknet_ros/bounding_boxes', BoundingBoxes, self.pred_callback, queue_size = 1)
+        rospy.Subscriber('/image_processor/output', BoundingBoxes, self.gt_callback, queue_size = 1)
     
     def handle_robot_call(self,req):
         #print("command: [%.2f, %.2f, %.2f, %.2f]\n filename: %s topic: %s robot: %s"%(req.x,req.y, req.z, req.yaw, req.filename, req.topic, req.robot))
@@ -54,7 +54,7 @@ class call_robot_srv:
                 post.goal[2] = req.z
                 post.goal[3] = req.yaw
                 if intersect_line_segment_aabbox((Vec3(self.odom.pose.pose.position.x, self.odom.pose.pose.position.y, self.odom.pose.pose.position.z), Vec3(req.x, req.y, req.z)), self.bbox, debug=False):
-                    #print('intersect')
+                    print('[W] intersect')
                     failed = 2
                 else:
                     #print('no intersect')
@@ -78,10 +78,24 @@ class call_robot_srv:
             #print('pred header: ',self.bbox_pred)
             #print('image header ',self.img_header)
             output = [True, -1, -1, -1, -1, -1.0, -1, -1, -1, -1]
+            
+            if len(self.bbox_gt.bounding_boxes) > 0:
+                if ((self.bbox_gt.header.stamp == self.img_header.stamp)):
+                    # print('gt align')
+                    tmp = self.bbox_gt.bounding_boxes[0]
+                    output[6] = tmp.xmin
+                    output[7] = tmp.ymin
+                    output[8] = tmp.xmax
+                    output[9] = tmp.ymax
+                else:
+                    print('[W] gt NOT aligned')
             num_bboxes = len(self.bbox_pred.bounding_boxes)
             if num_bboxes > 0:
-                if ((self.bbox_pred.header.stamp == self.img_header.stamp)):
-                    print('pred align')
+                if (self.img_header.stamp- self.bbox_pred.header.stamp  ) > rospy.Duration(0.5):
+                #if not ((self.bbox_pred.header.stamp == self.img_header.stamp)):
+                    print('[W] pred NOT align')
+                    print(self.bbox_pred.header.stamp - self.img_header.stamp)
+                else:
                     tmp_max = -1.0
                     idx = 0
                     for i in range(num_bboxes):
@@ -94,14 +108,6 @@ class call_robot_srv:
                     output[3] = tmp.xmax
                     output[4] = tmp.ymax
                     output[5] = tmp.probability
-            if len(self.bbox_gt.bounding_boxes) > 0:
-                if ((self.bbox_gt.header.stamp == self.img_header.stamp)):
-                    print('gt align')
-                    tmp = self.bbox_gt.bounding_boxes[0]
-                    output[6] = tmp.xmin
-                    output[7] = tmp.ymin
-                    output[8] = tmp.xmax
-                    output[9] = tmp.ymax
             print('bbox: ', output)
             st = ''
             for item in output:
