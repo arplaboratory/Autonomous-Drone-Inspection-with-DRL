@@ -51,7 +51,7 @@ K = np.array([278.745789, 0, 324.056283,
         
 
 #R_offset = tfs.euler_matrix(0.02, -0.28, 0, 'rzyx')  # yaw pitch roll
-R_offset = tfs.euler_matrix(0.02, -0.25, 0, 'rzyx')  # yaw pitch roll
+R_offset = tfs.euler_matrix(-0.02, -0.28, 0, 'rzyx')  # yaw pitch roll
 R_cam_world = np.array([0, -1, 0, 0,
                         0, 0, -1, 0,
                         1, 0, 0, 0,
