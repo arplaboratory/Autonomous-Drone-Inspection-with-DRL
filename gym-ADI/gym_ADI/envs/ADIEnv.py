@@ -41,7 +41,7 @@ class ADIEnv(Env):
         self.observation_space = Box(low=0, high=255,
                                      shape=[self.obs_size[0], self.obs_size[1], 3],
                                      dtype=np.uint8)
-        self.savepath = '/media/data/dataset/ADI/NERF'
+        self.savepath = '/media/data/dataset/ADI/NERF2'
         self.filename = '/media/data/dataset/ADI/image.png'
         self.ros_pattern = "rosservice call /call_robot \"{{x: {x:.1f}, y: {y:.1f}, z: {z:.1f}, yaw: {yaw:.1f},filename: {filename:s}, topic: '/hires/image_raw/compressed', robot: 'dragonfly12'}}\""
         self.max_retry_time = 100

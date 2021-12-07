@@ -44,7 +44,7 @@ if __name__ == '__main__':
     parser.add_argument('-max_step', type=int, default=5)
     parser.add_argument('-obs_size', type=int, default=256)
     parser.add_argument('-buffer_size', type=int, default=10000)
-    parser.add_argument('-total_timesteps', type=int, default=2500)
+    parser.add_argument('-total_timesteps', type=int, default=10000)
 
     opt = parser.parse_args()
     opt.eval = False
@@ -54,7 +54,7 @@ if __name__ == '__main__':
     # env = SubprocVecEnv(
     #     [make_env(opt.env_id, i, opt.global_seed, opt.radius, opt.z_0, opt.max_step, opt.obs_size) for i in range(opt.max_envs_num)])
     # Single env
-    env = make_env(opt.env_id, 0, opt.global_seed, opt.radius, opt.z_0, opt.max_step, opt.obs_size)()
+    env = make_env(opt.env_id, 0, opt.global_seed, opt.radius, opt.z_0, opt.max_step, opt.obs_size, eval=opt.eval)()
 
     if opt.policy == 'cnn':
         policy_name = 'CnnPolicy'
@@ -62,23 +62,25 @@ if __name__ == '__main__':
         raise KeyError
         
     # Check env
-    check_env(env)
+    # check_env(env)
 
-    checkpoint_callback = CheckpointBufferCallback(save_freq=100, save_path='./logs/',
-                                                     name_prefix='checkpoint')
+    checkpoint_callback = CheckpointBufferCallback(save_freq=100, save_path='./logs/', name_prefix='checkpoint')
 
     learning_starts = 100
 
-    if os.path.isfile('./final_model.zip'):
-        model = SAC.load('./final_model')
+    if os.path.isfile('./final_model_block_2.zip'):
+        print('Load model')
+        model = SAC.load('./final_model_block_2', tensorboard_log="./tb/", env=env)
     else:
         model = SAC(policy_name, env, verbose=1, buffer_size=opt.buffer_size, batch_size=opt.batch_size, train_freq = 1, learning_starts=learning_starts, gradient_steps=5, tensorboard_log="./tb/")
 
     if os.path.isfile('./buffer_init.pkl'):
+        print('Load Buffer')
         model.load_replay_buffer('./buffer_init')
 
     try:
-        model.learn(total_timesteps=opt.total_timesteps, callback=checkpoint_callback)
+        print('start learning')
+        model.learn(total_timesteps=opt.total_timesteps, callback=checkpoint_callback, tb_log_name="SAC")
     finally:
         model.save('./final_model_inter')
         model.save_replay_buffer('./buffer_inter')

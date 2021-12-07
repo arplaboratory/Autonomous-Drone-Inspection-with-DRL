@@ -8,7 +8,7 @@ from callback_buffer import CheckpointBufferCallback
 from stable_baselines3.common.utils import set_random_seed
 from stable_baselines3.sac import SAC
 from stable_baselines3.common.env_checker import check_env
-
+from stable_baselines3.common.evaluation import evaluate_policy
 from training import make_env
 
 # Reference: https://stable-baselines3.readthedocs.io/en/master/guide/examples.html#multiprocessing-unleashing-the-power-of-vectorized-environments
@@ -36,15 +36,11 @@ if __name__ == '__main__':
     # Single env
     eval_env = make_env(opt.env_id, 0, opt.global_seed, opt.radius, opt.z_0, opt.max_step, opt.obs_size, opt.eval)()
 
-    if opt.policy == 'cnn':
-        policy_name = 'CnnPolicy'
-    else:
-        raise KeyError
-        
     # Check env
-    check_env(env)
+    check_env(eval_env)
 
-    model = SAC.load('./final_model')
+    # model = SAC('CnnPolicy', eval_env, buffer_size=10000, verbose=1)
+    model = SAC.load('./logs/final_model')
 
     mean_reward, std_reward = evaluate_policy(model, eval_env, n_eval_episodes=10, deterministic=True)
 
