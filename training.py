@@ -11,7 +11,7 @@ from stable_baselines3.common.env_checker import check_env
 
 # Reference: https://stable-baselines3.readthedocs.io/en/master/guide/examples.html#multiprocessing-unleashing-the-power-of-vectorized-environments
 
-def make_env(env_id, rank, seed, radius, z_0, max_step, obs_size):
+def make_env(env_id, rank, seed, radius, z_0, max_step, obs_size, eval):
     """
     Utility function for multiprocessed env.
     :param z_0: z_0
@@ -22,7 +22,7 @@ def make_env(env_id, rank, seed, radius, z_0, max_step, obs_size):
     """
 
     def _init():
-        env = gym.make(env_id, seed=seed, rank=rank, radius=radius, z_0=z_0, max_step=max_step, obs_size=obs_size)
+        env = gym.make(env_id, seed=seed, rank=rank, radius=radius, z_0=z_0, max_step=max_step, obs_size=obs_size, eval=eval)
         env.seed(seed + rank)
         return env
 
@@ -47,6 +47,7 @@ if __name__ == '__main__':
     parser.add_argument('-total_timesteps', type=int, default=2500)
 
     opt = parser.parse_args()
+    opt.eval = False
     opt.radius = [opt.r_min, opt.r_max]
 
     # Multiple env

@@ -10,7 +10,7 @@ import random
 import glob
 
 class ADIEnv(Env):
-    def __init__(self, seed=0, rank=0, radius=None, z_0=0.35, obs_size=None, max_step=5):
+    def __init__(self, seed=0, rank=0, radius=None, z_0=0.35, obs_size=None, max_step=5, eval=False):
         super().__init__()
         if radius is None:
             radius = [0.8, -1.0]  # r_min, r_max
