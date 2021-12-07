@@ -1,15 +1,16 @@
 import subprocess
 import time
-
+import os
 import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
 from gym import Env
 from gym.spaces import Box
 import random
+import glob
 
 class ADIEnv(Env):
-    def __init__(self, seed=0, rank=0, radius=None, z_0=0.35, obs_size=None, max_step=5):
+    def __init__(self, seed=0, rank=0, radius=None, z_0=0.35, obs_size=None, max_step=5, eval=False):
         super().__init__()
         if radius is None:
             radius = [0.8, -1.0]  # r_min, r_max
@@ -40,8 +41,8 @@ class ADIEnv(Env):
         self.observation_space = Box(low=0, high=255,
                                      shape=[self.obs_size[0], self.obs_size[1], 3],
                                      dtype=np.uint8)
-
-        self.filename = '/home/jiuhong/image.png'
+        self.savepath = '/media/data/dataset/ADI/NERF'
+        self.filename = '/media/data/dataset/ADI/image.png'
         self.ros_pattern = "rosservice call /call_robot \"{{x: {x:.1f}, y: {y:.1f}, z: {z:.1f}, yaw: {yaw:.1f},filename: {filename:s}, topic: '/hires/image_raw/compressed', robot: 'dragonfly12'}}\""
         self.max_retry_time = 100
         self.max_step = max_step
@@ -69,6 +70,7 @@ class ADIEnv(Env):
             done = True
         info = {'reward': reward, 'score': [score1, score2, score3, score4], 'polar': self.current_polar_position, 'safe': self.action_safe}
         print(info)
+
         return obs, reward, done, info
 
     def render(self, mode='machine'):
@@ -152,8 +154,18 @@ class ADIEnv(Env):
                 current_retry = 0
                 print(f'Sleep 10s: Cannot get the image after {self.max_retry_time} retries.')
 
-        # resize image
+        # save and resize image
+        maxindex = 0
+        for savefilename in glob.glob(self.savepath+'/*.png'):
+            index = int(os.path.splitext(os.path.basename(savefilename))[0])
+            if index > maxindex:
+                maxindex=index
+        maxindex=maxindex+1
+        image.save(self.savepath+f'/{maxindex}.png')
         image = image.resize(tuple(self.obs_size))
+        with open(self.savepath+f'/{maxindex}.txt', 'w+') as f:
+            f.write(f'{x} {y} {z} {yaw}')
+
         return np.array(image), detect, done
 
     def polar_to_cart(self, polar_position):
@@ -234,7 +246,7 @@ class ADIEnv(Env):
             iou = intersection / (pred_area + gt_area - intersection + 1e-8)
             score3 = iou
 
-            if iou > 0.6:
+            if iou > 0.4:
                 # More score if the center of the bbox is located at the center of the image (currently use gt bbox)
                 center_gt = (xmax_gt + xmin_gt) / 2, (ymax_gt + ymin_gt) / 2
                 distance = np.sqrt((center_gt[0] - self.center_image[1]) ** 2 + (center_gt[1] - self.center_image[0]) ** 2)

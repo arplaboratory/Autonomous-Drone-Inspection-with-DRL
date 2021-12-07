@@ -4,14 +4,14 @@ import os
 import gym
 import gym_ADI
 
-from stable_baselines3.common.callbacks import EvalCallback
+from callback_buffer import CheckpointBufferCallback
 from stable_baselines3.common.utils import set_random_seed
 from stable_baselines3.sac import SAC
 from stable_baselines3.common.env_checker import check_env
 
 # Reference: https://stable-baselines3.readthedocs.io/en/master/guide/examples.html#multiprocessing-unleashing-the-power-of-vectorized-environments
 
-def make_env(env_id, rank, seed, radius, z_0, max_step, obs_size):
+def make_env(env_id, rank, seed, radius, z_0, max_step, obs_size, eval):
     """
     Utility function for multiprocessed env.
     :param z_0: z_0
@@ -22,7 +22,7 @@ def make_env(env_id, rank, seed, radius, z_0, max_step, obs_size):
     """
 
     def _init():
-        env = gym.make(env_id, seed=seed, rank=rank, radius=radius, z_0=z_0, max_step=max_step, obs_size=obs_size)
+        env = gym.make(env_id, seed=seed, rank=rank, radius=radius, z_0=z_0, max_step=max_step, obs_size=obs_size, eval=eval)
         env.seed(seed + rank)
         return env
 
@@ -43,10 +43,11 @@ if __name__ == '__main__':
     parser.add_argument('-z_0', type=float, default=0.35)
     parser.add_argument('-max_step', type=int, default=5)
     parser.add_argument('-obs_size', type=int, default=256)
-    parser.add_argument('-buffer_size', type=int, default=100000)
-    parser.add_argument('-total_timesteps', type=int, default=25000)
+    parser.add_argument('-buffer_size', type=int, default=10000)
+    parser.add_argument('-total_timesteps', type=int, default=2500)
 
     opt = parser.parse_args()
+    opt.eval = False
     opt.radius = [opt.r_min, opt.r_max]
 
     # Multiple env
@@ -63,22 +64,21 @@ if __name__ == '__main__':
     # Check env
     check_env(env)
 
-    eval_callback = EvalCallback(env, best_model_save_path='./logs/',
-                                 log_path='./logs/', eval_freq=1000,
-                                 deterministic=True, render=False)
+    checkpoint_callback = CheckpointBufferCallback(save_freq=100, save_path='./logs/',
+                                                     name_prefix='checkpoint')
 
-    model = SAC(policy_name, env, verbose=1, buffer_size=opt.buffer_size, batch_size=opt.batch_size,
-                tensorboard_log="./tb/")
+    learning_starts = 100
 
-    if os.path.isfile('./logs/final_model.pth'):
-        model.load('./logs/final_model.pth')
-    if os.path.isfile('./buffer.pth'):
-        model.load_replay_buffer('./buffer.pth')
+    if os.path.isfile('./final_model.zip'):
+        model = SAC.load('./final_model')
+    else:
+        model = SAC(policy_name, env, verbose=1, buffer_size=opt.buffer_size, batch_size=opt.batch_size, train_freq = 1, learning_starts=learning_starts, gradient_steps=5, tensorboard_log="./tb/")
+
+    if os.path.isfile('./buffer_init.pkl'):
+        model.load_replay_buffer('./buffer_init')
 
     try:
-        model.learn(total_timesteps=opt.total_timesteps, callback=eval_callback)
+        model.learn(total_timesteps=opt.total_timesteps, callback=checkpoint_callback)
     finally:
-        # Save Replay Buffer
-        if model.num_timesteps > 1000:
-            model.save('./logs/final_model.pth')
-            model.save_replay_buffer('./buffer.pth')
+        model.save('./final_model_inter')
+        model.save_replay_buffer('./buffer_inter')
