@@ -66,13 +66,11 @@ if __name__ == '__main__':
 
     checkpoint_callback = CheckpointBufferCallback(save_freq=100, save_path='./logs/', name_prefix='checkpoint')
 
-    learning_starts = 100
-
     if os.path.isfile('./final_model_block_2.zip'):
         print('Load model')
         model = SAC.load('./final_model_block_2', tensorboard_log="./tb/", env=env)
     else:
-        model = SAC(policy_name, env, verbose=1, buffer_size=opt.buffer_size, batch_size=opt.batch_size, train_freq = 1, learning_starts=learning_starts, gradient_steps=5, tensorboard_log="./tb/")
+        model = SAC(policy_name, env, verbose=1, buffer_size=opt.buffer_size, batch_size=opt.batch_size, train_freq=1, gradient_steps=5, tensorboard_log="./tb/", ent_coef='auto_0.1')
 
     if os.path.isfile('./buffer_init.pkl'):
         print('Load Buffer')
@@ -80,7 +78,7 @@ if __name__ == '__main__':
 
     try:
         print('start learning')
-        model.learn(total_timesteps=opt.total_timesteps, callback=checkpoint_callback, tb_log_name="SAC")
+        model.learn(total_timesteps=opt.total_timesteps, callback=checkpoint_callback, tb_log_name="block_2_high_low")
     finally:
         model.save('./final_model_inter')
         model.save_replay_buffer('./buffer_inter')
