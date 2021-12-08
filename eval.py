@@ -25,6 +25,7 @@ if __name__ == '__main__':
     parser.add_argument('-z_0', type=float, default=0.35)
     parser.add_argument('-max_step', type=int, default=5)
     parser.add_argument('-obs_size', type=int, default=256)
+    parser.add_argument('-file', type=str, default=None)
 
     opt = parser.parse_args()
     opt.eval = True
@@ -36,11 +37,10 @@ if __name__ == '__main__':
     # Single env
     eval_env = make_env(opt.env_id, 0, opt.global_seed, opt.radius, opt.z_0, opt.max_step, opt.obs_size, opt.eval)()
 
-    # Check env
-    check_env(eval_env)
-
-    # model = SAC('CnnPolicy', eval_env, buffer_size=10000, verbose=1)
-    model = SAC.load('./logs/final_model')
+    if opt.file is None:
+        model = SAC('CnnPolicy', eval_env, buffer_size=10000, verbose=1)
+    else:
+        model = SAC.load(opt.file)
 
     mean_reward, std_reward = evaluate_policy(model, eval_env, n_eval_episodes=10, deterministic=True)
 
