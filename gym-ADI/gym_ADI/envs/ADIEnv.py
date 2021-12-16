@@ -10,7 +10,7 @@ import random
 import glob
 
 class ADIEnv(Env):
-    def __init__(self, seed=0, rank=0, radius=None, z_0=0.35, obs_size=None, max_step=5, eval=False):
+    def __init__(self, seed=0, rank=0, radius=None, z_0=0.35, obs_size=None, max_step=5, eval=False, simple=False):
         super().__init__()
         if radius is None:
             radius = [0.8, -1.0]  # r_min, r_max
@@ -25,15 +25,18 @@ class ADIEnv(Env):
         random.seed(seed)
         np.random.seed(seed)
 
+        self.simple = simple
         self.radius = radius
         self.rank = rank
-        if self.radius[1] == -1.0:
+        if self.radius[1] == -1.0 or simple:
             self.enable_radius_change = False  # Sphere
             self.radius[1] = self.radius[0]
         else:
             self.enable_radius_change = True
 
-        if not self.enable_radius_change:
+        if self.simple:
+            self.action_space = Box(low=-1, high=1, shape=[1], dtype=np.float32)
+        elif not self.enable_radius_change:
             self.action_space = Box(low=-np.pi / 2, high=np.pi / 2, shape=[2], dtype=np.float32)
         else:
             self.action_space = Box(low=-np.pi / 2, high=np.pi / 2, shape=[3], dtype=np.float32)
@@ -41,6 +44,7 @@ class ADIEnv(Env):
         self.observation_space = Box(low=0, high=255,
                                      shape=[self.obs_size[0], self.obs_size[1], 3],
                                      dtype=np.uint8)
+
         self.savepath = '/media/data/dataset/ADI/NERF2'
         self.filename = '/media/data/dataset/ADI/image.png'
         self.ros_pattern = "rosservice call /call_robot \"{{x: {x:.1f}, y: {y:.1f}, z: {z:.1f}, yaw: {yaw:.1f},filename: {filename:s}, topic: '/hires/image_raw/compressed', robot: 'dragonfly12'}}\""
@@ -90,6 +94,7 @@ class ADIEnv(Env):
         score1, score2, score3, score4 = self.get_score(detect)
         self.current_score = score1 + score2 + score3 + score4
         self.current_step = 0
+
         return obs
 
     def get_image_detect_after_action(self, action=None):
@@ -107,7 +112,7 @@ class ADIEnv(Env):
                 while True:
                     try:
                         output_raw = None
-                        process = subprocess.run(self.ros_pattern.format(x=0.0, y=0.0, z=2.0, yaw=0.0, filename=self.filename), shell=True, capture_output=True, timeout=10)
+                        process = subprocess.run(self.ros_pattern.format(x=0.0, y=0.0, z=1.2, yaw=0.0, filename=self.filename), shell=True, capture_output=True, timeout=10)
                         output_raw = process.stdout.decode("utf-8")
                         output = output_raw.split()
                         success = output[1][1:]   # raw string is "True
@@ -120,7 +125,10 @@ class ADIEnv(Env):
                             print(f'Error resetting: {output_raw}')
                         else:
                             print(f'Errpr resetting: Time out')
-                self.current_polar_position = self.radius[1], random.random()*np.pi*2, random.random()*np.pi/4 + np.pi/4  # r, phi, theta
+                if self.simple:
+                    self.current_polar_position = self.radius[1], random.random()*np.pi*2, np.pi/2  # r, phi, theta
+                else:
+                    self.current_polar_position = self.radius[1], random.random()*np.pi*2, random.random()*np.pi/4 + np.pi/4  # r, phi, theta
             x, y, z, yaw = self.polar_to_cart(self.current_polar_position)
             while current_retry < self.max_retry_time:
                 try:
@@ -182,22 +190,32 @@ class ADIEnv(Env):
         return x, y, z, yaw
 
     def get_new_position(self, action):
-        if not self.enable_radius_change:
+        if self.simple:
+            r_0, phi_0, theta_0 = self.current_polar_position
+            d_phi = action[0] * np.pi/2
+            d_theta = 0
+            d_r = 0
+            r_t = r_0
+            theta_t = theta_0
+        elif not self.enable_radius_change:
             r_0, phi_0, theta_0 = self.current_polar_position
             d_phi, d_theta = action
+            d_r = 0
             r_t = r_0
+            theta_t = theta_0 + d_theta
         else:
             r_0, phi_0, theta_0 = self.current_polar_position
             d_r, d_phi, d_theta = action
-            print(action)
             # normalize d_theta from [-pi/2, pi/2] to [-pi/4, pi/4]
             d_theta = (d_theta + np.pi/2)/2 - np.pi/4
             # normalize d_r from [-pi/2, pi/2] to range
             d_r = (d_r / (np.pi / 2)) * (self.radius[1] - self.radius[0])
             r_t = r_0 + d_r
-
+            theta_t = theta_0 + d_theta
+	
         phi_t = phi_0 + d_phi
-        theta_t = theta_0 + d_theta
+	
+
 
         # Return legal r, phi and theta
         if self.enable_radius_change:
@@ -206,7 +224,18 @@ class ADIEnv(Env):
             phi_t += 2 * np.pi
         elif phi_t > 2 * np.pi:
             phi_t -= 2 * np.pi
-        theta_t = np.clip(theta_t, np.pi/4 , np.pi/2) # 45 degrees
+
+        if not self.simple:
+            if theta_t < np.pi/4:
+                print('Touch top')
+            elif theta_t > np.pi/2:
+                print('Touch bottom')
+            theta_t = np.clip(theta_t, np.pi/4 , np.pi/2) # 45 degrees
+
+        print(f'action:{action}')
+        print(f'delta:{d_r}, {d_phi}, {d_theta}')
+        print(f'final:{r_t}, {phi_t}, {theta_t}')
+
 
         return r_t, phi_t, theta_t
 
