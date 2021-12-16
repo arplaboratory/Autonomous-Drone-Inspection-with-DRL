@@ -2,13 +2,14 @@ import argparse
 import os
 
 import gym
-import gym_ADI
 import numpy as np
-from callback_buffer import CheckpointBufferCallback
-from stable_baselines3.common.utils import set_random_seed
-from stable_baselines3.sac import SAC
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.noise import NormalActionNoise
+from stable_baselines3.common.utils import set_random_seed
+from stable_baselines3.sac import SAC
+
+from callback_buffer import CheckpointBufferCallback
+
 
 # Reference: https://stable-baselines3.readthedocs.io/en/master/guide/examples.html#multiprocessing-unleashing-the-power-of-vectorized-environments
 
@@ -23,7 +24,8 @@ def make_env(env_id, rank, seed, radius, z_0, max_step, obs_size, eval, simple):
     """
 
     def _init():
-        env = gym.make(env_id, seed=seed, rank=rank, radius=radius, z_0=z_0, max_step=max_step, obs_size=obs_size, eval=eval, simple=simple)
+        env = gym.make(env_id, seed=seed, rank=rank, radius=radius, z_0=z_0, max_step=max_step, obs_size=obs_size,
+                       eval=eval, simple=simple)
         env.seed(seed + rank)
         return env
 
@@ -56,13 +58,14 @@ if __name__ == '__main__':
     # env = SubprocVecEnv(
     #     [make_env(opt.env_id, i, opt.global_seed, opt.radius, opt.z_0, opt.max_step, opt.obs_size) for i in range(opt.max_envs_num)])
     # Single env
-    env = make_env(opt.env_id, 0, opt.global_seed, opt.radius, opt.z_0, opt.max_step, opt.obs_size, opt.eval, opt.simple)()
+    env = make_env(opt.env_id, 0, opt.global_seed, opt.radius, opt.z_0, opt.max_step, opt.obs_size, opt.eval,
+                   opt.simple)()
 
     if opt.policy == 'cnn':
         policy_name = 'CnnPolicy'
     else:
         raise KeyError
-        
+
     # Check env
     check_env(env)
 
@@ -77,7 +80,8 @@ if __name__ == '__main__':
         model = SAC.load('./final_model_6b', tensorboard_log="./tb/", env=env)
         print(f'Current steps: {model.num_timesteps}')
     else:
-        model = SAC(policy_name, env, verbose=1, buffer_size=opt.buffer_size, batch_size=opt.batch_size, train_freq=1, gradient_steps=3, tensorboard_log="./tb/", ent_coef='auto_0.7', action_noise=action_noise)
+        model = SAC(policy_name, env, verbose=1, buffer_size=opt.buffer_size, batch_size=opt.batch_size, train_freq=1,
+                    gradient_steps=3, tensorboard_log="./tb/", ent_coef='auto_0.7', action_noise=action_noise)
         print('Create new model')
 
     if os.path.isfile('./buffer_init.pkl'):
@@ -87,7 +91,8 @@ if __name__ == '__main__':
     try:
         print('start learning')
         model._last_obs = None
-        model.learn(total_timesteps=opt.total_timesteps, callback=checkpoint_callback, tb_log_name="simple", log_interval=3, reset_num_timesteps=False)
+        model.learn(total_timesteps=opt.total_timesteps, callback=checkpoint_callback, tb_log_name="simple",
+                    log_interval=3, reset_num_timesteps=False)
     finally:
         model.save('./final_model_inter')
         model.save_replay_buffer('./buffer_inter')

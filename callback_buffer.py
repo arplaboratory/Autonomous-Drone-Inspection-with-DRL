@@ -1,5 +1,7 @@
-from stable_baselines3.common.callbacks import CheckpointCallback
 import os
+
+from stable_baselines3.common.callbacks import CheckpointCallback
+
 
 class CheckpointBufferCallback(CheckpointCallback):
     def _on_step(self) -> bool:

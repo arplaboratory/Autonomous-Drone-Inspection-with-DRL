@@ -1,17 +1,10 @@
 import argparse
-import os
 
-import gym
-import gym_ADI
-
-from callback_buffer import CheckpointBufferCallback
-from stable_baselines3.common.utils import set_random_seed
-from stable_baselines3.sac import SAC
-from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.evaluation import evaluate_policy
+from stable_baselines3.sac import SAC
+
 from training import make_env
 
-from stable_baselines3.common.vec_env import VecTransposeImage, DummyVecEnv
 # Reference: https://stable-baselines3.readthedocs.io/en/master/guide/examples.html#multiprocessing-unleashing-the-power-of-vectorized-environments
 
 
@@ -37,7 +30,8 @@ if __name__ == '__main__':
     # env = SubprocVecEnv(
     #     [make_env(opt.env_id, i, opt.global_seed, opt.radius, opt.z_0, opt.max_step, opt.obs_size) for i in range(opt.max_envs_num)])
     # Single env
-    eval_env = make_env(opt.env_id, 0, opt.global_seed, opt.radius, opt.z_0, opt.max_step, opt.obs_size, opt.eval, opt.simple)()
+    eval_env = make_env(opt.env_id, 0, opt.global_seed, opt.radius, opt.z_0, opt.max_step, opt.obs_size, opt.eval,
+                        opt.simple)()
 
     if opt.file is None:
         model = SAC('CnnPolicy', eval_env, buffer_size=10000, verbose=1)

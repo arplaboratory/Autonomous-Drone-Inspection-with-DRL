@@ -1,13 +1,14 @@
-import subprocess
-import time
+import glob
 import os
+import random
+import subprocess
+
 import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
 from gym import Env
 from gym.spaces import Box
-import random
-import glob
+
 
 class ADIEnv(Env):
     def __init__(self, seed=0, rank=0, radius=None, z_0=0.35, obs_size=None, max_step=5, eval=False, simple=False):
@@ -53,7 +54,7 @@ class ADIEnv(Env):
         self.z_0 = z_0
         self.center_image = self.image_size[0] // 2, self.image_size[1] // 2  # Y, X
         self.current_step = 0
-        self.current_polar_position = self.radius[1], np.pi, np.pi/2  # r, phi, theta
+        self.current_polar_position = self.radius[1], np.pi, np.pi / 2  # r, phi, theta
         self.current_score = 0
         self.action_safe = True
 
@@ -72,7 +73,8 @@ class ADIEnv(Env):
                 done = False
         else:
             done = True
-        info = {'reward': reward, 'score': [score1, score2, score3, score4], 'polar': self.current_polar_position, 'safe': self.action_safe}
+        info = {'reward': reward, 'score': [score1, score2, score3, score4], 'polar': self.current_polar_position,
+                'safe': self.action_safe}
         print(info)
 
         return obs, reward, done, info
@@ -106,16 +108,19 @@ class ADIEnv(Env):
 
         while image is None:
             if action is not None:
-                self.current_polar_position = self.get_new_position(action)  # action is delta r, delta phi and delta theta
+                self.current_polar_position = self.get_new_position(
+                    action)  # action is delta r, delta phi and delta theta
             else:
                 # reset, first goto 0,0,2, then random again
                 while True:
                     try:
                         output_raw = None
-                        process = subprocess.run(self.ros_pattern.format(x=0.0, y=0.0, z=1.2, yaw=0.0, filename=self.filename), shell=True, capture_output=True, timeout=10)
+                        process = subprocess.run(
+                            self.ros_pattern.format(x=0.0, y=0.0, z=1.2, yaw=0.0, filename=self.filename), shell=True,
+                            capture_output=True, timeout=10)
                         output_raw = process.stdout.decode("utf-8")
                         output = output_raw.split()
-                        success = output[1][1:]   # raw string is "True
+                        success = output[1][1:]  # raw string is "True
                         if success == "True":
                             break
                         else:
@@ -126,9 +131,11 @@ class ADIEnv(Env):
                         else:
                             print(f'Errpr resetting: Time out')
                 if self.simple:
-                    self.current_polar_position = self.radius[1], random.random()*np.pi*2, np.pi/2  # r, phi, theta
+                    self.current_polar_position = self.radius[
+                                                      1], random.random() * np.pi * 2, np.pi / 2  # r, phi, theta
                 else:
-                    self.current_polar_position = self.radius[1], random.random()*np.pi*2, random.random()*np.pi/4 + np.pi/4  # r, phi, theta
+                    self.current_polar_position = self.radius[
+                                                      1], random.random() * np.pi * 2, random.random() * np.pi / 4 + np.pi / 4  # r, phi, theta
             x, y, z, yaw = self.polar_to_cart(self.current_polar_position)
             while current_retry < self.max_retry_time:
                 try:
@@ -138,8 +145,8 @@ class ADIEnv(Env):
                         capture_output=True, timeout=10)
                     output_raw = process.stdout.decode("utf-8")
                     output = output_raw.split()
-                    success = output[1][1:]   # raw string is "True
-                    if success == "True" and int(output[7])!=-1:
+                    success = output[1][1:]  # raw string is "True
+                    if success == "True" and int(output[7]) != -1:
                         image = Image.open(self.filename)
                         detect = output[2:-1]
                         break
@@ -164,14 +171,14 @@ class ADIEnv(Env):
 
         # save and resize image
         maxindex = 0
-        for savefilename in glob.glob(self.savepath+'/*.png'):
+        for savefilename in glob.glob(self.savepath + '/*.png'):
             index = int(os.path.splitext(os.path.basename(savefilename))[0])
             if index > maxindex:
-                maxindex=index
-        maxindex=maxindex+1
-        image.save(self.savepath+f'/{maxindex}.png')
+                maxindex = index
+        maxindex = maxindex + 1
+        image.save(self.savepath + f'/{maxindex}.png')
         image = image.resize(tuple(self.obs_size))
-        with open(self.savepath+f'/{maxindex}.txt', 'w+') as f:
+        with open(self.savepath + f'/{maxindex}.txt', 'w+') as f:
             f.write(f'{x} {y} {z} {yaw}')
 
         return np.array(image), detect, done
@@ -192,7 +199,7 @@ class ADIEnv(Env):
     def get_new_position(self, action):
         if self.simple:
             r_0, phi_0, theta_0 = self.current_polar_position
-            d_phi = action[0] * np.pi/2
+            d_phi = action[0] * np.pi / 2
             d_theta = 0
             d_r = 0
             r_t = r_0
@@ -207,15 +214,13 @@ class ADIEnv(Env):
             r_0, phi_0, theta_0 = self.current_polar_position
             d_r, d_phi, d_theta = action
             # normalize d_theta from [-pi/2, pi/2] to [-pi/4, pi/4]
-            d_theta = (d_theta + np.pi/2)/2 - np.pi/4
+            d_theta = (d_theta + np.pi / 2) / 2 - np.pi / 4
             # normalize d_r from [-pi/2, pi/2] to range
             d_r = (d_r / (np.pi / 2)) * (self.radius[1] - self.radius[0])
             r_t = r_0 + d_r
             theta_t = theta_0 + d_theta
-	
-        phi_t = phi_0 + d_phi
-	
 
+        phi_t = phi_0 + d_phi
 
         # Return legal r, phi and theta
         if self.enable_radius_change:
@@ -226,16 +231,15 @@ class ADIEnv(Env):
             phi_t -= 2 * np.pi
 
         if not self.simple:
-            if theta_t < np.pi/4:
+            if theta_t < np.pi / 4:
                 print('Touch top')
-            elif theta_t > np.pi/2:
+            elif theta_t > np.pi / 2:
                 print('Touch bottom')
-            theta_t = np.clip(theta_t, np.pi/4 , np.pi/2) # 45 degrees
+            theta_t = np.clip(theta_t, np.pi / 4, np.pi / 2)  # 45 degrees
 
         print(f'action:{action}')
         print(f'delta:{d_r}, {d_phi}, {d_theta}')
         print(f'final:{r_t}, {phi_t}, {theta_t}')
-
 
         return r_t, phi_t, theta_t
 
@@ -243,7 +247,7 @@ class ADIEnv(Env):
 
         print(detect)
 
-        if self.action_safe is False: 
+        if self.action_safe is False:
             return 0, 0, 0, 0
 
         xmin, ymin, xmax, ymax, prob, xmin_gt, ymin_gt, xmax_gt, ymax_gt = detect  # 640, 480
@@ -278,7 +282,8 @@ class ADIEnv(Env):
             if iou > 0.4:
                 # More score if the center of the bbox is located at the center of the image (currently use gt bbox)
                 center_gt = (xmax_gt + xmin_gt) / 2, (ymax_gt + ymin_gt) / 2
-                distance = np.sqrt((center_gt[0] - self.center_image[1]) ** 2 + (center_gt[1] - self.center_image[0]) ** 2)
+                distance = np.sqrt(
+                    (center_gt[0] - self.center_image[1]) ** 2 + (center_gt[1] - self.center_image[0]) ** 2)
                 lower_bound = min(self.center_image) / 4
                 upper_bound = min(self.center_image) / 2
                 if distance <= lower_bound:
